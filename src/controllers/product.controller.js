@@ -6,26 +6,25 @@ const {
   deleteProductService,
 } = require("../services/product.service");
 
-const { validateProductId, validateProductBody } = require("../utils/productValidators");
-
 // GET /products
-const getProducts = async (req, res) => {
+const getProducts = async (req, res, next) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  if (page < 1 || limit < 1 || limit > 100) {
+    return res.status(400).json({ error: "Parámetros de paginación inválidos" });
+  }
+
   try {
-    const products = await getAllProducts();
-    res.json(products);
+    const result = await getAllProducts(page, limit);
+    res.json(result);
   } catch (error) {
-    console.error("Error al obtener productos:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    next(error);
   }
 };
 
 // GET /products/:id
-const getProductById = async (req, res) => {
-  const validationError = validateProductId(req.params.id);
-  if (validationError) {
-    return res.status(validationError.status).json({ error: validationError.error });
-  }
-
+const getProductById = async (req, res, next) => {
   try {
     const product = await getProduct(req.params.id);
     if (!product) {
@@ -33,46 +32,25 @@ const getProductById = async (req, res) => {
     }
     res.json(product);
   } catch (error) {
-    console.error("Error al obtener producto:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    next(error);
   }
 };
 
 // POST /products
-const createProduct = async (req, res) => {
-  const validationError = validateProductBody(req.body);
-  if (validationError) {
-    return res.status(validationError.status).json({ error: validationError.error });
-  }
-
+const createProduct = async (req, res, next) => {
   try {
     const newProduct = await addProduct(req.body);
     res.status(201).json(newProduct);
   } catch (error) {
-    console.error("Error al crear producto:", error);
     if (error.message.includes("ya existe")) {
-      return res.status(409).json({ error: error.message });
+      error.status = 409;
     }
-    res.status(500).json({ error: "Error interno del servidor" });
+    next(error);
   }
 };
 
 // PUT /products/:id
-const updateProduct = async (req, res) => {
-  const idValidationError = validateProductId(req.params.id);
-  if (idValidationError) {
-    return res.status(idValidationError.status).json({ error: idValidationError.error });
-  }
-
-  if (Object.keys(req.body).length === 0) {
-    return res.status(400).json({ error: "Debe proporcionar al menos un campo para actualizar" });
-  }
-
-  const bodyValidationError = validateProductBody(req.body);
-  if (bodyValidationError) {
-    return res.status(bodyValidationError.status).json({ error: bodyValidationError.error });
-  }
-
+const updateProduct = async (req, res, next) => {
   try {
     const updated = await updateProductService(req.params.id, req.body);
     if (!updated) {
@@ -80,18 +58,12 @@ const updateProduct = async (req, res) => {
     }
     res.json(updated);
   } catch (error) {
-    console.error("Error al actualizar producto:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    next(error);
   }
 };
 
 // DELETE /products/:id
-const deleteProduct = async (req, res) => {
-  const validationError = validateProductId(req.params.id);
-  if (validationError) {
-    return res.status(validationError.status).json({ error: validationError.error });
-  }
-
+const deleteProduct = async (req, res, next) => {
   try {
     const deleted = await deleteProductService(req.params.id);
     if (!deleted) {
@@ -99,8 +71,7 @@ const deleteProduct = async (req, res) => {
     }
     res.json({ message: "Producto eliminado" });
   } catch (error) {
-    console.error("Error al eliminar producto:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    next(error);
   }
 };
 

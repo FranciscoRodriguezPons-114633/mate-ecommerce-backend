@@ -19,6 +19,10 @@ app.get("/", (req, res) => {
   res.send("API funcionando");
 });
 
+// Middleware de manejo de errores
+const errorHandler = require('./middlewares/errorHandler');
+app.use(errorHandler);
+
 // Levantar servidor
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

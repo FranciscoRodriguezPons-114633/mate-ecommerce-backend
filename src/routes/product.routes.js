@@ -9,10 +9,13 @@ const {
   deleteProduct,
 } = require("../controllers/product.controller");
 
+const validateObjectId = require('../middlewares/validateObjectId');
+const { validateProductSchema, validateProductUpdateSchema } = require('../middlewares/validateProductSchema');
+
 router.get("/", getProducts);
-router.get("/:id", getProductById);
-router.post("/", createProduct);
+router.get("/:id", validateObjectId, getProductById);
+router.post("/", validateProductSchema, createProduct);
 router.put("/:id", updateProduct);
-router.delete("/:id", deleteProduct);
+router.delete("/:id", validateObjectId, deleteProduct);
 
 module.exports = router;
