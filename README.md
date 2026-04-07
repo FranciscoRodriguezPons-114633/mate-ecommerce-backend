@@ -1,182 +1,234 @@
-🧉 Cómo levantar y cerrar el proyecto (backend + Mongo)
+# 🧉 Mate E-Commerce Backend
 
-🚀 LEVANTAR TODO
-
-1. Ir a la carpeta del proyecto:
-   cd mate-ecommerce/backend
-
-2. Levantar MongoDB:
-   brew services start mongodb-community
-
-3. Levantar el backend:
-   npm run dev
-
-👉 Resultado esperado:
-
-* “MongoDB conectado”
-* “Servidor corriendo en [http://localhost:3000”](http://localhost:3000”)
+API REST para la gestión de productos en una plataforma de comercio electrónico.
 
 ---
 
-🧪 PROBAR
+## 📌 Descripción
 
-Podés usar Postman
+**Mate E-Commerce Backend** es una API REST desarrollada en Node.js que permite gestionar productos mediante operaciones CRUD (Crear, Leer, Actualizar y Eliminar).
 
-Ejemplo:
-POST http://localhost:3000/api/products
+Está diseñada con una arquitectura modular y escalable, separando responsabilidades en capas (controllers, services, models, etc.), facilitando su mantenimiento y crecimiento.
 
-Body:
+---
+
+## 🚀 Tecnologías Utilizadas
+
+* **Node.js** – Entorno de ejecución
+* **Express.js** – Framework para servidor HTTP
+* **MongoDB** – Base de datos NoSQL
+* **Mongoose** – ODM para MongoDB
+* **Joi** – Validación de datos
+* **Jest** – Testing
+* **Supertest** – Testing de endpoints
+* **Nodemon** – Desarrollo
+* **Docker (opcional)** – Contenerización
+
+---
+
+## 📂 Estructura del Proyecto
+
+```
+src/
+├── config/        # Configuración (DB, variables)
+├── controllers/   # Manejo de requests/responses
+├── models/        # Esquemas de datos (Mongoose)
+├── routes/        # Definición de endpoints
+├── services/      # Lógica de negocio
+├── middlewares/   # Validaciones y manejo de errores
+└── utils/         # Funciones auxiliares
+```
+
+---
+
+## ⚙️ Instalación y Configuración
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/tu-usuario/mate-ecommerce-backend.git
+cd mate-ecommerce-backend
+```
+
+### 2. Instalar dependencias
+
+```bash
+npm install
+```
+
+### 3. Configurar variables de entorno
+
+Crear archivo `.env` basado en `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Editar `.env`:
+
+```
+MONGO_URI=mongodb://localhost:27017/mate-ecommerce
+PORT=3000
+```
+
+---
+
+## ▶️ Ejecución del Proyecto
+
+### Modo desarrollo
+
+```bash
+npm run dev
+```
+
+### Modo producción
+
+```bash
+npm start
+```
+
+---
+
+## 🔄 Flujo de la Aplicación
+
+```
+Request HTTP
+   ↓
+Middleware
+   ↓
+Routes
+   ↓
+Controller
+   ↓
+Service
+   ↓
+Database (MongoDB)
+   ↓
+Response
+```
+
+---
+
+## 🔗 API Endpoints
+
+### 📦 Productos
+
+| Método | Endpoint          | Descripción                 |
+| ------ | ----------------- | --------------------------- |
+| GET    | /api/products     | Obtener todos los productos |
+| GET    | /api/products/:id | Obtener producto por ID     |
+| POST   | /api/products     | Crear producto              |
+| PUT    | /api/products/:id | Actualizar producto         |
+| DELETE | /api/products/:id | Eliminar producto           |
+
+### 📥 Ejemplo de Request (POST)
+
+```json
 {
-"name": "Mate imperial",
-"price": 15000
+  "name": "Mate",
+  "price": 10,
+  "quantity": 5
 }
+```
 
----
+### 📤 Ejemplo de Response
 
-🛑 CERRAR TODO
-
-1. Apagar backend:
-   Ctrl + C
-
-2. Apagar Mongo:
-   brew services stop mongodb-community
-
-3. Salir de mongosh (si estás adentro):
-   exit
-
----
-
-🔁 RESUMEN RÁPIDO
-
-Levantar:
-
-* cd backend
-* brew services start mongodb-community
-* npm run dev
-
-Cerrar:
-
-* Ctrl + C
-* brew services stop mongodb-community
-
---
-🧉 Resumen del proyecto backend (e-commerce de mates)
-
-📁 ESTRUCTURA
-
-backend/
-├── src/
-│   ├── app.js              → servidor principal
-│   ├── config/
-│   │   └── db.js           → conexión a MongoDB
-│   ├── models/
-│   │   └── Product.js      → esquema de producto (Mongoose)
-│   ├── routes/
-│   │   └── product.routes.js
-│   ├── controllers/
-│   │   └── product.controller.js
-│   ├── services/
-│   │   └── product.service.js
-│
-├── package.json
-├── .gitignore
-
-
-
-
----
-
-🧠 ARQUITECTURA
-
-* Routes → definen endpoints
-* Controllers → manejan request/response
-* Services → lógica de negocio + DB
-* Models → estructura de datos (Mongo)
-
----
-
-🗄 BASE DE DATOS
-
-* MongoDB local (puerto 27017)
-* Conexión con Mongoose
-* DB: mate-ecommerce
-* Collection: products
-
-Ejemplo documento:
-
+```json
 {
-"_id": "...",
-"name": "Mate imperial",
-"price": 15000,
-"__v": 0
+  "_id": "123abc",
+  "name": "Mate",
+  "price": 10,
+  "quantity": 5
 }
+```
 
 ---
 
-🌐 ENDPOINTS (API REST)
+## 🗄️ Modelo de Datos
 
-GET /api/products
-→ devuelve todos los productos
+### Product
 
-GET /api/products/:id
-→ devuelve un producto por ID
-
-POST /api/products
-→ crea producto
-
-Body:
-{
-"name": "Mate imperial",
-"price": 15000
-}
-
-PUT /api/products/:id
-→ actualiza producto
-
-DELETE /api/products/:id
-→ elimina producto
+* `name`: String
+* `price`: Number
+* `quantity`: Number
+* `description`: String
+* `category`: String
+* `image`: String
+* `createdAt` / `updatedAt`: Automáticos
 
 ---
 
-⚙️ TECNOLOGÍAS
+## 🧪 Testing
 
-* Node.js
-* Express
-* MongoDB
-* Mongoose
-* Nodemon
+Ejecutar tests:
 
----
-
-🔧 FUNCIONAMIENTO
-
-Cliente → Backend (Express) → MongoDB
-El backend recibe requests, usa services, guarda o lee en Mongo y responde en JSON.
+```bash
+npm test
+```
 
 ---
 
-🚀 ESTADO ACTUAL
+## 🐳 Uso con Docker (Opcional)
 
-* Backend funcionando
-* CRUD completo
-* Persistencia en Mongo
-* Proyecto subido a GitHub
+```yaml
+version: "3"
+services:
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+```
 
----
+Ejecutar:
 
-📌 PRÓXIMOS PASOS
-
-* Agregar stock, categoría, imagen
-* Validaciones
-* Usuarios y auth
-* Redis (cache)
-* Frontend en JS
-
----
-
-Proyecto listo como base de e-commerce real 💥
-
+```bash
+docker-compose up
+```
 
 ---
 
-Con eso el proyecto queda completamente operativo 🚀
+## 🧠 Buenas Prácticas Implementadas
+
+* Separación de responsabilidades (arquitectura en capas)
+* Validación de datos con Joi
+* Manejo de errores centralizado
+* Uso de variables de entorno
+* Código modular y escalable
+
+---
+
+## ⚠️ Mejoras Futuras
+
+* 🔐 Implementar autenticación con JWT
+* 📊 Agregar logging (Winston)
+* ⚡ Implementar caché con Redis
+* 🚫 Rate limiting
+* 📈 Indexación en MongoDB
+* ✅ Mejorar cobertura de tests
+
+---
+
+## 👨‍💻 Autor
+
+**Francisco Rodriguez Pons**
+
+---
+
+## 📖 Conclusión
+
+Este proyecto representa una base sólida para el desarrollo de aplicaciones e-commerce, aplicando buenas prácticas de backend, organización de código y uso de tecnologías modernas.
+
+Nivel del proyecto: **Intermedio**
+
+---
+
+## 📌 Setup rápido (TL;DR)
+
+```bash
+git clone ...
+npm install
+cp .env.example .env
+npm run dev
+```
+
+---
