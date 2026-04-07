@@ -9,13 +9,41 @@ const {
   deleteProduct,
 } = require("../controllers/product.controller");
 
-const validateObjectId = require('../middlewares/validateObjectId');
-const { validateProductSchema, validateProductUpdateSchema } = require('../middlewares/validateProductSchema');
+const validateObjectId = require("../middlewares/validateObjectId");
+const {
+  validateProductSchema,
+  validateProductUpdateSchema,
+} = require("../middlewares/validateProductSchema");
+
+const authMiddleware = require("../middlewares/authMiddleware");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 router.get("/", getProducts);
 router.get("/:id", validateObjectId, getProductById);
-router.post("/", validateProductSchema, createProduct);
-router.put("/:id", updateProduct);
-router.delete("/:id", validateObjectId, deleteProduct);
+
+router.post(
+  "/",
+  authMiddleware,
+  requireAdmin,
+  validateProductSchema,
+  createProduct
+);
+
+router.put(
+  "/:id",
+  authMiddleware,
+  requireAdmin,
+  validateObjectId,
+  validateProductUpdateSchema,
+  updateProduct
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireAdmin,
+  validateObjectId,
+  deleteProduct
+);
 
 module.exports = router;
