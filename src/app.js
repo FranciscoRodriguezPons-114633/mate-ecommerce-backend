@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const cors = require("cors");
 const connectDB = require("./config/db");
 
 const app = express();
@@ -8,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 connectDB();
 
+app.use(cors()); // Configuración básica de CORS - en producción, especificar orígenes permitidos
 app.use(express.json());
 
 const productRoutes = require("./routes/product.routes");
