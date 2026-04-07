@@ -1,8 +1,10 @@
+require('dotenv').config(); // Cargar variables de entorno
+
 const express = require("express");
 const connectDB = require("./config/db"); // 👈 IMPORTANTE
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Usar variable de entorno para puerto
 
 // Conectar a Mongo
 connectDB(); // 👈 ESTO FALTABA

@@ -2,7 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const productRoutes = require('../src/routes/product.routes');
 
-// Mock the service
+// Simular el servicio
 jest.mock('../src/services/product.service');
 
 const {
@@ -17,7 +17,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/products', productRoutes);
 
-// Import error handler
+// Importar manejador de errores
 const errorHandler = require('../src/middlewares/errorHandler');
 app.use(errorHandler);
 
@@ -99,7 +99,7 @@ describe('Product Controller', () => {
       expect(response.body.error).toBe('ID de producto inválido');
     });
 
-    // Commented test: service errors (500) - issues with middleware in test setup
+    // Test comentado: errores de servicio (500) - problemas con configuración de middlewares en tests
   });
 
   describe('POST /api/products', () => {
@@ -141,7 +141,7 @@ describe('Product Controller', () => {
   });
 
   describe('PUT /api/products/:id', () => {
-    // Commented tests: update product (200), product not found (404) - issues with middleware in test setup
+    // Tests comentados: actualizar producto (200), producto no encontrado (404) - problemas con configuración de middlewares en tests
 
     it('should return 400 for empty update body', async () => {
       const response = await request(app)
@@ -174,7 +174,7 @@ describe('Product Controller', () => {
       expect(deleteProductService).toHaveBeenCalledWith('64f1b2c3d4e5f6789abc123');
     });
 
-    // Commented test: product not found (404) - issues with middleware in test setup
+    // Test comentado: producto no encontrado (404) - problemas con configuración de middlewares en tests
 
     it('should return 400 for invalid ObjectId', async () => {
       const response = await request(app)
