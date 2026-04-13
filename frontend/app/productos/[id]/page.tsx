@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { 
   ChevronLeft, 
   Star, 
@@ -19,21 +19,62 @@ import {
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/context/cart-context"
-import { getProductById, products } from "@/lib/products-data"
+import { fetchProductById, fetchProducts, ApiProduct } from "@/lib/api"
 
 export default function ProductDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const { addToCart } = useCart()
   
-  const product = getProductById(params.id as string)
-  
+  const [product, setProduct] = useState<ApiProduct | null>(null)
+  const [relatedProducts, setRelatedProducts] = useState<ApiProduct[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [isAddedToCart, setIsAddedToCart] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
 
-  if (!product) {
+  useEffect(() => {
+    const id = params.id as string
+    fetchProductById(id)
+      .then((data) => {
+        setProduct(data)
+        // Cargar productos relacionados
+        return fetchProducts(1, 20)
+      })
+      .then((data) => {
+        setRelatedProducts(
+          data.products.filter((p) => p._id !== params.id).slice(0, 4)
+        )
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setIsLoading(false))
+  }, [params.id])
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 0,
+    }).format(price)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="mx-auto max-w-7xl px-4 py-16 text-center">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-secondary rounded w-1/3 mx-auto" />
+            <div className="h-4 bg-secondary rounded w-1/2 mx-auto" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (notFound || !product) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -55,22 +96,11 @@ export default function ProductDetailPage() {
     )
   }
 
-  // Galería de imágenes (usar images del producto o repetir la imagen principal)
-  const galleryImages = product.images && product.images.length > 1 
-    ? product.images 
-    : [product.image, product.image, product.image, product.image]
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(price)
-  }
+  const galleryImages = [product.image, product.image, product.image, product.image]
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta
-    if (newQuantity >= 1 && newQuantity <= product.stock) {
+    if (newQuantity >= 1 && newQuantity <= product.quantity) {
       setQuantity(newQuantity)
     }
   }
@@ -78,7 +108,7 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
       addToCart({
-        id: product.id,
+        id: product._id,
         name: product.name,
         price: product.price,
         image: product.image,
@@ -87,15 +117,6 @@ export default function ProductDetailPage() {
     setIsAddedToCart(true)
     setTimeout(() => setIsAddedToCart(false), 2000)
   }
-
-  // Productos relacionados (misma categoría)
-  const relatedProducts = products
-    .filter(p => p.category === product.category && p.id !== product.id)
-    .slice(0, 4)
-
-  const discount = product.originalPrice 
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
-    : 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,9 +140,8 @@ export default function ProductDetailPage() {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-          {/* Galería de Imágenes - Estilo Amazon */}
+          {/* Galería */}
           <div className="flex flex-col-reverse gap-4 sm:flex-row">
-            {/* Miniaturas */}
             <div className="flex gap-2 sm:flex-col">
               {galleryImages.map((img, index) => (
                 <button
@@ -133,17 +153,11 @@ export default function ProductDetailPage() {
                       : "border-border hover:border-primary/50"
                   }`}
                 >
-                  <Image
-                    src={img}
-                    alt={`${product.name} - Vista ${index + 1}`}
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src={img} alt={`${product.name} - Vista ${index + 1}`} fill className="object-cover" />
                 </button>
               ))}
             </div>
 
-            {/* Imagen Principal */}
             <div className="relative flex-1">
               <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-secondary">
                 <Image
@@ -153,26 +167,12 @@ export default function ProductDetailPage() {
                   className="object-cover"
                   priority
                 />
-                {/* Badges */}
-                <div className="absolute left-4 top-4 flex flex-col gap-2">
-                  {product.isNew && (
-                    <span className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground">
-                      Nuevo
-                    </span>
-                  )}
-                  {product.isOnSale && discount > 0 && (
-                    <span className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-foreground">
-                      -{discount}%
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Información del Producto */}
+          {/* Info */}
           <div className="flex flex-col">
-            {/* Categoría */}
             <Link 
               href={`/productos?categoria=${encodeURIComponent(product.category)}`}
               className="text-sm font-medium uppercase tracking-wider text-accent hover:underline"
@@ -180,96 +180,49 @@ export default function ProductDetailPage() {
               {product.category}
             </Link>
 
-            {/* Título */}
             <h1 className="mt-2 font-serif text-3xl font-bold leading-tight text-foreground sm:text-4xl">
               {product.name}
             </h1>
 
-            {/* Rating */}
-            <div className="mt-4 flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-5 w-5 ${
-                      i < product.rating 
-                        ? "fill-amber-400 text-amber-400" 
-                        : "fill-muted text-muted"
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">
-                ({product.rating}.0) · {(parseInt(product.id) * 7 + 23) % 50 + 15} reseñas
-              </span>
+            <div className="mt-4 flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
+              ))}
             </div>
 
-            {/* Precio */}
-            <div className="mt-6 flex items-baseline gap-3">
+            <div className="mt-6">
               <span className="text-4xl font-bold text-foreground">
                 {formatPrice(product.price)}
               </span>
-              {product.originalPrice && (
-                <>
-                  <span className="text-xl text-muted-foreground line-through">
-                    {formatPrice(product.originalPrice)}
-                  </span>
-                  <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
-                    Ahorrás {formatPrice(product.originalPrice - product.price)}
-                  </span>
-                </>
-              )}
             </div>
 
-            {/* Descripción */}
             <p className="mt-6 text-base leading-relaxed text-muted-foreground">
               {product.description}
             </p>
 
-            {/* Características */}
-            {product.features && product.features.length > 0 && (
-              <div className="mt-6">
-                <h3 className="font-medium text-foreground">Características:</h3>
-                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Check className="h-4 w-4 flex-shrink-0 text-primary" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Stock */}
             <div className="mt-6">
-              {product.stock > 10 ? (
+              {product.quantity > 10 ? (
                 <p className="flex items-center gap-2 text-sm text-green-600">
                   <Check className="h-4 w-4" />
                   En stock - Disponible para envío inmediato
                 </p>
-              ) : product.stock > 0 ? (
+              ) : product.quantity > 0 ? (
                 <p className="text-sm text-amber-600">
-                  Solo quedan {product.stock} unidades
+                  Solo quedan {product.quantity} unidades
                 </p>
               ) : (
-                <p className="text-sm text-red-600">
-                  Sin stock
-                </p>
+                <p className="text-sm text-red-600">Sin stock</p>
               )}
             </div>
 
-            {/* Selector de cantidad y Agregar al carrito */}
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-              {/* Selector de cantidad */}
               <div className="flex items-center">
                 <span className="mr-4 text-sm font-medium text-foreground">Cantidad:</span>
                 <div className="flex items-center rounded-lg border border-border">
                   <button
                     onClick={() => handleQuantityChange(-1)}
                     disabled={quantity <= 1}
-                    className="flex h-10 w-10 items-center justify-center text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Reducir cantidad"
+                    className="flex h-10 w-10 items-center justify-center text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -278,39 +231,30 @@ export default function ProductDetailPage() {
                   </span>
                   <button
                     onClick={() => handleQuantityChange(1)}
-                    disabled={quantity >= product.stock}
-                    className="flex h-10 w-10 items-center justify-center text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Aumentar cantidad"
+                    disabled={quantity >= product.quantity}
+                    className="flex h-10 w-10 items-center justify-center text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Botón Agregar al carrito */}
               <button
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-8 py-3 text-base font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                disabled={product.quantity === 0}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-8 py-3 text-base font-medium transition-all disabled:opacity-50 ${
                   isAddedToCart 
                     ? "bg-green-600 text-white" 
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}
               >
                 {isAddedToCart ? (
-                  <>
-                    <Check className="h-5 w-5" />
-                    Agregado al carrito
-                  </>
+                  <><Check className="h-5 w-5" />Agregado al carrito</>
                 ) : (
-                  <>
-                    <ShoppingCart className="h-5 w-5" />
-                    Agregar al carrito
-                  </>
+                  <><ShoppingCart className="h-5 w-5" />Agregar al carrito</>
                 )}
               </button>
 
-              {/* Favoritos */}
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
                 className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border transition-colors ${
@@ -318,13 +262,11 @@ export default function ProductDetailPage() {
                     ? "border-red-200 bg-red-50 text-red-500" 
                     : "border-border text-muted-foreground hover:border-red-200 hover:bg-red-50 hover:text-red-500"
                 }`}
-                aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
               >
                 <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
               </button>
             </div>
 
-            {/* Beneficios */}
             <div className="mt-8 grid gap-4 rounded-xl border border-border bg-secondary/30 p-4 sm:grid-cols-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -332,7 +274,7 @@ export default function ProductDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Envío gratis</p>
-                  <p className="text-xs text-muted-foreground">En compras +$15.000</p>
+                  <p className="text-xs text-muted-foreground">En compras +$30.000</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -364,31 +306,21 @@ export default function ProductDetailPage() {
               También te puede interesar
             </h2>
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {relatedProducts.map((relatedProduct) => (
-                <Link 
-                  key={relatedProduct.id} 
-                  href={`/productos/${relatedProduct.id}`}
-                  className="group block"
-                >
+              {relatedProducts.map((p) => (
+                <Link key={p._id} href={`/productos/${p._id}`} className="group block">
                   <div className="relative overflow-hidden rounded-xl border border-border bg-card transition-all hover:shadow-lg">
                     <div className="relative aspect-square overflow-hidden bg-secondary">
                       <Image
-                        src={relatedProduct.image}
-                        alt={relatedProduct.name}
+                        src={p.image}
+                        alt={p.name}
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     </div>
                     <div className="p-4">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        {relatedProduct.category}
-                      </p>
-                      <h3 className="mt-1 font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                        {relatedProduct.name}
-                      </h3>
-                      <p className="mt-2 text-lg font-bold text-foreground">
-                        {formatPrice(relatedProduct.price)}
-                      </p>
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{p.category}</p>
+                      <h3 className="mt-1 font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">{p.name}</h3>
+                      <p className="mt-2 text-lg font-bold text-foreground">{formatPrice(p.price)}</p>
                     </div>
                   </div>
                 </Link>

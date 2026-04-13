@@ -22,15 +22,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// URL base de tu API - cambiar cuando conectes tu backend
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+// CAMBIO 1: puerto 3000 en lugar de 5000
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Cargar usuario desde localStorage al iniciar
   useEffect(() => {
     const savedToken = localStorage.getItem("token")
     const savedUser = localStorage.getItem("user")
@@ -42,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  // Función para hacer login
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -54,10 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (!response.ok) {
-        return { success: false, error: data.message || "Error al iniciar sesión" }
+        // CAMBIO 2: data.error en lugar de data.message
+        return { success: false, error: data.error || "Error al iniciar sesión" }
       }
 
-      // Guardar token y usuario
       localStorage.setItem("token", data.token)
       localStorage.setItem("user", JSON.stringify(data.user))
       setToken(data.token)
@@ -69,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Función para registrarse
   const register = async (name: string, email: string, password: string) => {
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
@@ -81,10 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (!response.ok) {
-        return { success: false, error: data.message || "Error al registrarse" }
+        // CAMBIO 3: data.error en lugar de data.message
+        return { success: false, error: data.error || "Error al registrarse" }
       }
 
-      // Guardar token y usuario
       localStorage.setItem("token", data.token)
       localStorage.setItem("user", JSON.stringify(data.user))
       setToken(data.token)
@@ -96,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Función para cerrar sesión
   const logout = () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
@@ -113,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// Hook para usar el contexto de autenticación
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {

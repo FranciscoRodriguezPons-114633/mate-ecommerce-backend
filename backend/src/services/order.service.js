@@ -24,6 +24,7 @@ const createOrderService = async (userId, items) => {
       price: product.price,
       quantity: item.quantity,
       subtotal,
+      image: product.image,
     });
 
     total += subtotal;

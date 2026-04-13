@@ -5,11 +5,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
-import { products as initialProducts, Product } from "@/lib/products-data"
+import { fetchProducts, ApiProduct } from "@/lib/api"
 import {
   Package,
   ShoppingCart,
-  Users,
   DollarSign,
   Plus,
   Edit,
@@ -18,74 +17,153 @@ import {
   LogOut,
   LayoutDashboard,
   Search,
-  Eye,
+  Clock,
+  Truck,
+  CheckCircle,
+  XCircle,
+  CreditCard,
 } from "lucide-react"
 
-// Tabs del admin
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
+
 type Tab = "dashboard" | "products" | "orders"
 
-// Datos de ejemplo para pedidos
-const sampleOrders = [
-  { id: "1", customer: "Juan Pérez", email: "juan@email.com", total: 45000, status: "pending", date: "2024-01-15" },
-  { id: "2", customer: "María García", email: "maria@email.com", total: 18500, status: "completed", date: "2024-01-14" },
-  { id: "3", customer: "Carlos López", email: "carlos@email.com", total: 28000, status: "shipped", date: "2024-01-13" },
-  { id: "4", customer: "Ana Martínez", email: "ana@email.com", total: 8900, status: "completed", date: "2024-01-12" },
-]
+interface Order {
+  _id: string
+  user: { name: string; email: string }
+  items: { name: string; quantity: number; subtotal: number; image?: string }[]
+  total: number
+  status: "pending" | "paid" | "shipped" | "delivered" | "cancelled"
+  createdAt: string
+}
+
+const statusConfig = {
+  pending:   { label: "Pendiente",  color: "bg-yellow-100 text-yellow-700" },
+  paid:      { label: "Pagado",     color: "bg-blue-100 text-blue-700" },
+  shipped:   { label: "En camino",  color: "bg-indigo-100 text-indigo-700" },
+  delivered: { label: "Entregado",  color: "bg-green-100 text-green-700" },
+  cancelled: { label: "Cancelado",  color: "bg-red-100 text-red-700" },
+}
 
 export default function AdminPage() {
   const router = useRouter()
-  const { user, isAdmin, logout, isLoading } = useAuth()
+  const { user, token, isAdmin, logout, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>("dashboard")
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [orders, setOrders] = useState(sampleOrders)
+  const [products, setProducts] = useState<ApiProduct[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [showProductModal, setShowProductModal] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null)
 
-  // Verificar si es admin
   useEffect(() => {
     if (!isLoading && (!user || !isAdmin)) {
       router.push("/login")
     }
   }, [user, isAdmin, isLoading, router])
 
-  // Formatear precio
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-AR", {
+  useEffect(() => {
+    if (!token) return
+    Promise.all([
+      fetchProducts(1, 100),
+      fetch(`${API_URL}/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([productsData, ordersData]) => {
+        setProducts(productsData.products)
+        setOrders(ordersData)
+      })
+      .catch(console.error)
+      .finally(() => setIsLoadingData(false))
+  }, [token])
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("es-AR", {
       style: "currency",
       currency: "ARS",
       minimumFractionDigits: 0,
     }).format(price)
-  }
 
-  // Estadísticas del dashboard
-  const stats = [
-    {
-      label: "Ventas Totales",
-      value: formatPrice(orders.reduce((sum, o) => sum + o.total, 0)),
-      icon: DollarSign,
-      change: "+12%",
-    },
-    { label: "Pedidos", value: orders.length, icon: ShoppingCart, change: "+5%" },
-    { label: "Productos", value: products.length, icon: Package, change: "+2" },
-    { label: "Clientes", value: 156, icon: Users, change: "+8%" },
-  ]
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("es-AR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
 
-  // Filtrar productos
+  const totalVentas = orders.reduce((sum, o) => sum + o.total, 0)
+
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Eliminar producto
-  const handleDeleteProduct = (id: string) => {
-    if (confirm("¿Estás seguro de eliminar este producto?")) {
-      setProducts(products.filter((p) => p.id !== id))
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm("¿Estás seguro de eliminar este producto?")) return
+    try {
+      const res = await fetch(`${API_URL}/products/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setProducts(products.filter((p) => p._id !== id))
+      }
+    } catch (error) {
+      console.error(error)
     }
   }
 
-  // Actualizar estado de pedido
-  const handleUpdateOrderStatus = (orderId: string, status: string) => {
-    setOrders(orders.map((o) => (o.id === orderId ? { ...o, status } : o)))
+  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      const res = await fetch(`${API_URL}/orders/${orderId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        setOrders(orders.map((o) =>
+          o._id === orderId ? { ...o, status: status as Order["status"] } : o
+        ))
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleSaveProduct = async (data: Partial<ApiProduct>) => {
+    try {
+      const isEditing = !!editingProduct
+      const url = isEditing
+        ? `${API_URL}/products/${editingProduct._id}`
+        : `${API_URL}/products`
+      const method = isEditing ? "PUT" : "POST"
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      })
+
+      const saved = await res.json()
+
+      if (res.ok) {
+        if (isEditing) {
+          setProducts(products.map((p) => (p._id === saved._id ? saved : p)))
+        } else {
+          setProducts([...products, saved])
+        }
+        setShowProductModal(false)
+        setEditingProduct(null)
+      }
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   if (isLoading) {
@@ -96,16 +174,13 @@ export default function AdminPage() {
     )
   }
 
-  if (!user || !isAdmin) {
-    return null
-  }
+  if (!user || !isAdmin) return null
 
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border hidden lg:block">
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="p-6 border-b border-border">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
@@ -116,44 +191,27 @@ export default function AdminPage() {
             <p className="mt-2 text-xs text-muted-foreground">Panel de Administración</p>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
-            <button
-              onClick={() => setActiveTab("dashboard")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "dashboard"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-secondary"
-              }`}
-            >
-              <LayoutDashboard className="h-5 w-5" />
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab("products")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "products"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-secondary"
-              }`}
-            >
-              <Package className="h-5 w-5" />
-              Productos
-            </button>
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${
-                activeTab === "orders"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-secondary"
-              }`}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              Pedidos
-            </button>
+            {[
+              { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+              { key: "products",  label: "Productos",  icon: Package },
+              { key: "orders",    label: "Pedidos",    icon: ShoppingCart },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as Tab)}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${
+                  activeTab === tab.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-secondary"
+                }`}
+              >
+                <tab.icon className="h-5 w-5" />
+                {tab.label}
+              </button>
+            ))}
           </nav>
 
-          {/* User & Actions */}
           <div className="p-4 border-t border-border">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -187,22 +245,16 @@ export default function AdminPage() {
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center justify-between p-4">
-          <Link href="/" className="font-serif text-xl font-bold text-foreground">
-            Matero Admin
-          </Link>
-          <button
-            onClick={logout}
-            className="p-2 text-muted-foreground hover:text-foreground"
-          >
+          <span className="font-serif text-xl font-bold text-foreground">Matero Admin</span>
+          <button onClick={logout} className="p-2 text-muted-foreground hover:text-foreground">
             <LogOut className="h-5 w-5" />
           </button>
         </div>
-        {/* Mobile Tabs */}
         <div className="flex border-t border-border">
           {[
             { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { key: "products", label: "Productos", icon: Package },
-            { key: "orders", label: "Pedidos", icon: ShoppingCart },
+            { key: "products",  label: "Productos",  icon: Package },
+            { key: "orders",    label: "Pedidos",    icon: ShoppingCart },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -220,24 +272,23 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="lg:ml-64 p-4 lg:p-8">
+
         {/* Dashboard */}
         {activeTab === "dashboard" && (
           <div>
             <h1 className="font-serif text-2xl font-bold text-foreground mb-6">Dashboard</h1>
-
-            {/* Stats Grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-              {stats.map((stat) => (
+              {[
+                { label: "Ventas Totales", value: formatPrice(totalVentas), icon: DollarSign },
+                { label: "Pedidos", value: orders.length, icon: ShoppingCart },
+                { label: "Productos", value: products.length, icon: Package },
+                { label: "Pendientes", value: orders.filter(o => o.status === "pending").length, icon: Clock },
+              ].map((stat) => (
                 <div key={stat.label} className="bg-card border border-border rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <stat.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                      {stat.change}
-                    </span>
+                  <div className="p-2 rounded-lg bg-primary/10 w-fit mb-4">
+                    <stat.icon className="h-5 w-5 text-primary" />
                   </div>
                   <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -245,14 +296,11 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Recent Orders */}
+            {/* Pedidos recientes */}
             <div className="bg-card border border-border rounded-xl">
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <h2 className="font-semibold text-foreground">Pedidos Recientes</h2>
-                <button
-                  onClick={() => setActiveTab("orders")}
-                  className="text-sm text-primary hover:underline"
-                >
+                <button onClick={() => setActiveTab("orders")} className="text-sm text-primary hover:underline">
                   Ver todos
                 </button>
               </div>
@@ -267,33 +315,25 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.slice(0, 4).map((order) => (
-                      <tr key={order.id} className="border-b border-border last:border-0">
-                        <td className="p-4">
-                          <p className="font-medium text-foreground">{order.customer}</p>
-                          <p className="text-xs text-muted-foreground">{order.email}</p>
-                        </td>
-                        <td className="p-4 font-medium text-foreground">{formatPrice(order.total)}</td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                              order.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : order.status === "shipped"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
-                          >
-                            {order.status === "completed"
-                              ? "Completado"
-                              : order.status === "shipped"
-                              ? "Enviado"
-                              : "Pendiente"}
-                          </span>
-                        </td>
-                        <td className="p-4 text-sm text-muted-foreground">{order.date}</td>
-                      </tr>
-                    ))}
+                    {isLoadingData ? (
+                      <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">Cargando...</td></tr>
+                    ) : (
+                      orders.slice(0, 5).map((order) => (
+                        <tr key={order._id} className="border-b border-border last:border-0">
+                          <td className="p-4">
+                            <p className="font-medium text-foreground">{order.user?.name || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{order.user?.email || "—"}</p>
+                          </td>
+                          <td className="p-4 font-medium text-foreground">{formatPrice(order.total)}</td>
+                          <td className="p-4">
+                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${statusConfig[order.status].color}`}>
+                              {statusConfig[order.status].label}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground">{formatDate(order.createdAt)}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -301,16 +341,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Products */}
+        {/* Productos */}
         {activeTab === "products" && (
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <h1 className="font-serif text-2xl font-bold text-foreground">Productos</h1>
               <button
-                onClick={() => {
-                  setEditingProduct(null)
-                  setShowProductModal(true)
-                }}
+                onClick={() => { setEditingProduct(null); setShowProductModal(true) }}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 <Plus className="h-4 w-4" />
@@ -318,7 +355,6 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* Search */}
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <input
@@ -330,7 +366,6 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Products Table */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -344,71 +379,49 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((product) => (
-                      <tr key={product.id} className="border-b border-border last:border-0 hover:bg-secondary/30">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-secondary">
-                              <Image src={product.image} alt={product.name} fill className="object-cover" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground line-clamp-1">{product.name}</p>
-                              <div className="flex gap-2 mt-1">
-                                {product.isNew && (
-                                  <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">Nuevo</span>
-                                )}
-                                {product.isOnSale && (
-                                  <span className="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-full">Oferta</span>
-                                )}
+                    {isLoadingData ? (
+                      <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Cargando...</td></tr>
+                    ) : (
+                      filteredProducts.map((product) => (
+                        <tr key={product._id} className="border-b border-border last:border-0 hover:bg-secondary/30">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                                <Image src={product.image} alt={product.name} fill className="object-cover" />
                               </div>
+                              <p className="font-medium text-foreground line-clamp-1">{product.name}</p>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm text-muted-foreground">{product.category}</td>
-                        <td className="p-4">
-                          <p className="font-medium text-foreground">{formatPrice(product.price)}</p>
-                          {product.originalPrice && (
-                            <p className="text-xs text-muted-foreground line-through">
-                              {formatPrice(product.originalPrice)}
-                            </p>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <span
-                            className={`text-sm font-medium ${
-                              product.stock > 10
-                                ? "text-green-600"
-                                : product.stock > 0
-                                ? "text-yellow-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {product.stock} unidades
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => {
-                                setEditingProduct(product)
-                                setShowProductModal(true)
-                              }}
-                              className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-                              aria-label="Editar"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProduct(product.id)}
-                              className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              aria-label="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground">{product.category}</td>
+                          <td className="p-4 font-medium text-foreground">{formatPrice(product.price)}</td>
+                          <td className="p-4">
+                            <span className={`text-sm font-medium ${
+                              product.quantity > 10 ? "text-green-600"
+                              : product.quantity > 0 ? "text-yellow-600"
+                              : "text-red-600"
+                            }`}>
+                              {product.quantity} unidades
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => { setEditingProduct(product); setShowProductModal(true) }}
+                                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(product._id)}
+                                className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -416,11 +429,10 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Orders */}
+        {/* Pedidos */}
         {activeTab === "orders" && (
           <div>
             <h1 className="font-serif text-2xl font-bold text-foreground mb-6">Pedidos</h1>
-
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -431,46 +443,41 @@ export default function AdminPage() {
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Total</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Estado</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Fecha</th>
-                      <th className="text-right p-4 text-sm font-medium text-muted-foreground">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} className="border-b border-border last:border-0 hover:bg-secondary/30">
-                        <td className="p-4 font-mono text-sm text-foreground">#{order.id}</td>
-                        <td className="p-4">
-                          <p className="font-medium text-foreground">{order.customer}</p>
-                          <p className="text-xs text-muted-foreground">{order.email}</p>
-                        </td>
-                        <td className="p-4 font-medium text-foreground">{formatPrice(order.total)}</td>
-                        <td className="p-4">
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border-0 focus:ring-2 focus:ring-ring ${
-                              order.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : order.status === "shipped"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
-                          >
-                            <option value="pending">Pendiente</option>
-                            <option value="shipped">Enviado</option>
-                            <option value="completed">Completado</option>
-                          </select>
-                        </td>
-                        <td className="p-4 text-sm text-muted-foreground">{order.date}</td>
-                        <td className="p-4">
-                          <button
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-                            aria-label="Ver detalles"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {isLoadingData ? (
+                      <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Cargando...</td></tr>
+                    ) : orders.length === 0 ? (
+                      <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">No hay pedidos todavía</td></tr>
+                    ) : (
+                      orders.map((order) => (
+                        <tr key={order._id} className="border-b border-border last:border-0 hover:bg-secondary/30">
+                          <td className="p-4 font-mono text-sm text-foreground">
+                            #{order._id.slice(-8).toUpperCase()}
+                          </td>
+                          <td className="p-4">
+                            <p className="font-medium text-foreground">{order.user?.name || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{order.user?.email || "—"}</p>
+                          </td>
+                          <td className="p-4 font-medium text-foreground">{formatPrice(order.total)}</td>
+                          <td className="p-4">
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-lg border-0 focus:ring-2 focus:ring-ring cursor-pointer ${statusConfig[order.status].color}`}
+                            >
+                              <option value="pending">Pendiente</option>
+                              <option value="paid">Pagado</option>
+                              <option value="shipped">En camino</option>
+                              <option value="delivered">Entregado</option>
+                              <option value="cancelled">Cancelado</option>
+                            </select>
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground">{formatDate(order.createdAt)}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -479,54 +486,39 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* Product Modal */}
+      {/* Modal Producto */}
       {showProductModal && (
         <ProductModal
           product={editingProduct}
-          onClose={() => {
-            setShowProductModal(false)
-            setEditingProduct(null)
-          }}
-          onSave={(product) => {
-            if (editingProduct) {
-              setProducts(products.map((p) => (p.id === product.id ? product : p)))
-            } else {
-              setProducts([...products, { ...product, id: String(products.length + 1) }])
-            }
-            setShowProductModal(false)
-            setEditingProduct(null)
-          }}
+          onClose={() => { setShowProductModal(false); setEditingProduct(null) }}
+          onSave={handleSaveProduct}
         />
       )}
     </div>
   )
 }
 
-// Modal para crear/editar producto
 function ProductModal({
   product,
   onClose,
   onSave,
 }: {
-  product: Product | null
+  product: ApiProduct | null
   onClose: () => void
-  onSave: (product: Product) => void
+  onSave: (data: Partial<ApiProduct>) => void
 }) {
-  const [formData, setFormData] = useState<Partial<Product>>(
-    product || {
-      name: "",
-      description: "",
-      price: 0,
-      category: "Calabazas",
-      stock: 0,
-      image: "/product-mate-1.jpg",
-      rating: 5,
-    }
-  )
+  const [formData, setFormData] = useState({
+    name: product?.name || "",
+    description: product?.description || "",
+    price: product?.price || 0,
+    quantity: product?.quantity || 0,
+    category: product?.category || "Calabazas",
+    image: product?.image || "/product-mate-1.jpg",
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData as Product)
+    onSave(formData)
   }
 
   return (
@@ -575,8 +567,8 @@ function ProductModal({
               <label className="block text-sm font-medium text-foreground mb-1">Stock</label>
               <input
                 type="number"
-                value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
                 className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
@@ -598,25 +590,15 @@ function ProductModal({
             </select>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.isNew}
-                onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
-                className="rounded border-input"
-              />
-              <span className="text-sm text-foreground">Nuevo</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.isOnSale}
-                onChange={(e) => setFormData({ ...formData, isOnSale: e.target.checked })}
-                className="rounded border-input"
-              />
-              <span className="text-sm text-foreground">En oferta</span>
-            </label>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">URL de imagen</label>
+            <input
+              type="text"
+              value={formData.image}
+              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="/product-mate-1.jpg"
+            />
           </div>
 
           <div className="flex gap-3 pt-4">

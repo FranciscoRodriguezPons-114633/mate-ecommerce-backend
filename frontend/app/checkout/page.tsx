@@ -16,7 +16,6 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderComplete, setOrderComplete] = useState(false)
 
-  // Datos del formulario
   const [shippingData, setShippingData] = useState({
     address: "",
     city: "",
@@ -32,7 +31,6 @@ export default function CheckoutPage() {
     cvv: "",
   })
 
-  // Formatear precio
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -41,11 +39,9 @@ export default function CheckoutPage() {
     }).format(price)
   }
 
-  // Costo de envío
   const shippingCost = totalPrice > 30000 ? 0 : 3500
   const finalTotal = totalPrice + shippingCost
 
-  // Redirigir si no hay items o no está logueado
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -72,13 +68,12 @@ export default function CheckoutPage() {
     )
   }
 
-  // Manejar envío del pedido
+  // FUNCIÓN CORREGIDA
   const handleSubmitOrder = async () => {
     setIsProcessing(true)
 
     try {
-      // Aquí llamarías a tu API para crear el pedido
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/orders`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"}/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,32 +81,27 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           items: items.map((item) => ({
-            productId: item.id,
+            product: item.id,
             quantity: item.quantity,
           })),
-          shippingAddress: shippingData,
-          total: finalTotal,
         }),
       })
+
+      const data = await response.json()
 
       if (response.ok) {
         setOrderComplete(true)
         clearCart()
       } else {
-        // Simular éxito para demo
-        setOrderComplete(true)
-        clearCart()
+        alert(data.error || "Error al procesar el pedido")
       }
     } catch {
-      // Simular éxito para demo sin backend
-      setOrderComplete(true)
-      clearCart()
+      alert("Error de conexión con el servidor")
     } finally {
       setIsProcessing(false)
     }
   }
 
-  // Pantalla de orden completada
   if (orderComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -146,7 +136,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
@@ -167,7 +156,6 @@ export default function CheckoutPage() {
 
       <main className="py-8">
         <div className="mx-auto max-w-6xl px-4">
-          {/* Progress Steps */}
           <div className="flex items-center justify-center gap-4 mb-8">
             {[
               { num: 1, label: "Envío", icon: Truck },
@@ -193,9 +181,7 @@ export default function CheckoutPage() {
           </div>
 
           <div className="grid gap-8 lg:grid-cols-3">
-            {/* Formulario */}
             <div className="lg:col-span-2">
-              {/* Step 1: Envío */}
               {step === 1 && (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h2 className="font-serif text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
@@ -205,73 +191,58 @@ export default function CheckoutPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">
-                        Dirección
-                      </label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Dirección</label>
                       <input
                         type="text"
                         value={shippingData.address}
                         onChange={(e) => setShippingData({ ...shippingData, address: e.target.value })}
                         className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         placeholder="Calle y número"
-                        required
                       />
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Ciudad
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Ciudad</label>
                         <input
                           type="text"
                           value={shippingData.city}
                           onChange={(e) => setShippingData({ ...shippingData, city: e.target.value })}
                           className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           placeholder="Ciudad"
-                          required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Provincia
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Provincia</label>
                         <input
                           type="text"
                           value={shippingData.province}
                           onChange={(e) => setShippingData({ ...shippingData, province: e.target.value })}
                           className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           placeholder="Provincia"
-                          required
                         />
                       </div>
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Código Postal
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Código Postal</label>
                         <input
                           type="text"
                           value={shippingData.postalCode}
                           onChange={(e) => setShippingData({ ...shippingData, postalCode: e.target.value })}
                           className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           placeholder="1234"
-                          required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Teléfono
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Teléfono</label>
                         <input
                           type="tel"
                           value={shippingData.phone}
                           onChange={(e) => setShippingData({ ...shippingData, phone: e.target.value })}
                           className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           placeholder="+54 11 1234-5678"
-                          required
                         />
                       </div>
                     </div>
@@ -287,7 +258,6 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Step 2: Pago */}
               {step === 2 && (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h2 className="font-serif text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
@@ -297,9 +267,7 @@ export default function CheckoutPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">
-                        Número de Tarjeta
-                      </label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Número de Tarjeta</label>
                       <input
                         type="text"
                         value={paymentData.cardNumber}
@@ -311,9 +279,7 @@ export default function CheckoutPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">
-                        Nombre en la Tarjeta
-                      </label>
+                      <label className="block text-sm font-medium text-foreground mb-1">Nombre en la Tarjeta</label>
                       <input
                         type="text"
                         value={paymentData.cardName}
@@ -325,9 +291,7 @@ export default function CheckoutPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Vencimiento
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Vencimiento</label>
                         <input
                           type="text"
                           value={paymentData.expiry}
@@ -338,9 +302,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          CVV
-                        </label>
+                        <label className="block text-sm font-medium text-foreground mb-1">CVV</label>
                         <input
                           type="text"
                           value={paymentData.cvv}
@@ -371,7 +333,6 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Step 3: Confirmar */}
               {step === 3 && (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h2 className="font-serif text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
@@ -416,7 +377,6 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Resumen del pedido */}
             <div>
               <div className="bg-card border border-border rounded-xl p-6 sticky top-24">
                 <h2 className="font-serif text-lg font-semibold text-foreground mb-4">
