@@ -1,15 +1,15 @@
-# 🧉 Mate E-Commerce Fullstack
+# 🧉 Mate E-Commerce Backend
 
-Plataforma completa de comercio electrónico para la venta de mates, con arquitectura de monorepo usando Next.js y Node.js/Express.
+Plataforma completa de comercio electrónico para la venta de mates. Backend y frontend integrados con arquitectura de monorepo usando Next.js (frontend) y Node.js/Express (backend).
 
 ---
 
 ## 📌 Descripción
 
-**Mate E-Commerce Fullstack** es una aplicación completa que incluye:
+**Mate E-Commerce Backend** es una aplicación completa que incluye:
 
 - **Frontend**: Interfaz de usuario desarrollada en Next.js con TypeScript
-- **Backend**: API REST en Node.js para gestión de productos, usuarios y pedidos
+- **Backend**: API REST en Node.js para gestión de productos, usuarios, autenticación y pedidos
 
 Arquitectura modular y escalable, separando responsabilidades en capas.
 
@@ -24,9 +24,12 @@ Arquitectura modular y escalable, separando responsabilidades en capas.
 - **MongoDB** – Base de datos NoSQL
 - **Mongoose** – ODM para MongoDB
 - **Joi** – Validación de datos
+- **JWT (jsonwebtoken)** – Autenticación y autorización
+- **bcryptjs** – Encriptación de contraseñas
 - **Jest** – Testing
 - **Supertest** – Testing de endpoints
 - **Nodemon** – Desarrollo
+- **Concurrently** – Ejecutar múltiples procesos simultáneamente
 
 ### Frontend
 
@@ -35,13 +38,14 @@ Arquitectura modular y escalable, separando responsabilidades en capas.
 - **Tailwind CSS** – Estilos
 - **Radix UI** – Componentes UI
 - **React Hook Form** – Manejo de formularios
+- **Zod** – Validación de esquemas
 
 ---
 
 ## 📂 Estructura del Proyecto
 
 ```
-mate-ecommerce-fullstack/
+mate-ecommerce-backend/
 ├── backend/            # 🟢 API REST Node.js/Express
 │   ├── src/           # Código fuente del backend
 │   │   ├── config/    # Configuración (DB, variables)
@@ -74,8 +78,8 @@ mate-ecommerce-fullstack/
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/mate-ecommerce-fullstack.git
-cd mate-ecommerce-fullstack
+git clone https://github.com/FranciscoRodriguezPons-114633/mate-ecommerce-backend.git
+cd mate-ecommerce-backend
 ```
 
 ### 2. Instalar todas las dependencias
@@ -153,7 +157,7 @@ npm test  # Tests del backend
 
 ## 🌐 Acceder a la aplicación
 
-- **Frontend**: http://localhost:3001
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3000/api/
 
 ---
@@ -166,18 +170,22 @@ npm test  # Tests del backend
 | `npm run build`                    | Construir frontend para producción        |
 | `npm start`                        | Producción (backend + frontend built)     |
 | `npm test`                         | Ejecutar tests del backend                |
+| `npm run install:all`              | Instalar todas las dependencias           |
 | `npm run dev --workspace=backend`  | Solo backend en desarrollo                |
 | `npm run dev --workspace=frontend` | Solo frontend en desarrollo               |
+| `npm run lint`                     | Lint del frontend                         |
 
 ---
 
 ## 📋 Próximos Pasos
 
-- [ ] Configurar conexión frontend-backend
-- [ ] Implementar autenticación completa
-- [ ] Agregar gestión de pedidos
+- [x] Configurar conexión frontend-backend
+- [x] Implementar autenticación con JWT
+- [ ] Agregar gestión completa de pedidos
 - [ ] Implementar pasarela de pagos
 - [ ] Desplegar a producción
+- [ ] Agregar logging (Winston)
+- [ ] Implementar caché con Redis
 
 ---
 
@@ -286,17 +294,20 @@ docker-compose up
 - Manejo de errores centralizado
 - Uso de variables de entorno
 - Código modular y escalable
+- Autenticación con JWT
+- Encriptación de contraseñas con bcryptjs
 
 ---
 
 ## ⚠️ Mejoras Futuras
 
-- 🔐 Implementar autenticación con JWT
-- 📊 Agregar logging (Winston)
+- 📊 Agregar logging avanzado (Winston)
 - ⚡ Implementar caché con Redis
 - 🚫 Rate limiting
-- 📈 Indexación en MongoDB
+- 📈 Indexación optimizada en MongoDB
 - ✅ Mejorar cobertura de tests
+- 🔄 Implementar refresh tokens
+- 📧 Sistema de notificaciones por email
 
 ---
 
@@ -308,16 +319,16 @@ docker-compose up
 
 ## 📖 Conclusión
 
-Este proyecto representa una base sólida para el desarrollo de aplicaciones e-commerce, aplicando buenas prácticas de backend, organización de código y uso de tecnologías modernas.
+Este proyecto representa una base sólida para el desarrollo de aplicaciones e-commerce, aplicando buenas prácticas de backend, organización de código, autenticación segura y uso de tecnologías modernas.
 
-Nivel del proyecto: **Intermedio**
+Nivel del proyecto: **Intermedio a Avanzado**
 
 ---
 
 ## 📌 Setup rápido (TL;DR)
 
 ```bash
-git clone ...
+git clone https://github.com/FranciscoRodriguezPons-114633/mate-ecommerce-backend.git
 npm install
 cp .env.example .env
 npm run dev
