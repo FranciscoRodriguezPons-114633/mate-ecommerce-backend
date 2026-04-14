@@ -66,19 +66,28 @@ const timeline = [
 
 const team = [
   {
-    name: "Martín González",
-    role: "Fundador & Director",
-    image: "/testimonial-1.jpg",
+    name: "Nicolas Menendez",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Nicolas_Menendez-7fTwFBbxBo8KLEMo490lFHWftGrwkJ.jpeg",
   },
   {
-    name: "Lucía Fernández",
-    role: "Directora de Operaciones",
-    image: "/testimonial-2.jpg",
+    name: "Thomas Mariani",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Thomas_Mariani-OMSEgqtnaWGGl3eH5qtJjzAONC0pQS.jpeg",
   },
   {
-    name: "Carlos Rodríguez",
-    role: "Jefe de Artesanos",
-    image: "/testimonial-3.jpg",
+    name: "Francisco Rodriguez Pons",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Francisco_Pons-eWsDbBV6oQUGp0mgwDJyTQg5ZHofIY.jpeg",
+  },
+  {
+    name: "Kiara Adamo",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Kiara_Adamo-HwXLmvAYdrcVSWI6pm2gduqIYWU8Ou.jpeg",
+  },
+  {
+    name: "Nicolas Rosencovich",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Nicolas_Rosencovich-etfJP5DKuMVIU5KbuZeNRo1PoiJLGk.jpeg",
+  },
+  {
+    name: "Emma Knubel",
+    image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Emma_Knubel-fqOf3NkAgkF2c0hYEcgMnUN2ueO4Ee.jpeg",
   },
 ]
 
@@ -251,7 +260,7 @@ export default function NosotrosPage() {
                   <h3 className="mt-6 font-serif text-xl font-semibold text-foreground">
                     {member.name}
                   </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{member.role}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{}</p>
                 </div>
               ))}
             </div>
