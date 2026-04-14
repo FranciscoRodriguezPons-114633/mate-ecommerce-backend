@@ -6,7 +6,7 @@ const productSchema = Joi.object({
   quantity: Joi.number().min(0),
   description: Joi.string().max(500),
   category: Joi.string(),
-  image: Joi.string().uri(),
+  image: Joi.string(),
 });
 
 const productUpdateSchema = Joi.object({
@@ -15,8 +15,8 @@ const productUpdateSchema = Joi.object({
   quantity: Joi.number().min(0),
   description: Joi.string().max(500),
   category: Joi.string(),
-  image: Joi.string().uri(),
-}).min(1); // At least one field
+  image: Joi.string(),
+}).min(1);
 
 const validateProductSchema = (req, res, next) => {
   const { error } = productSchema.validate(req.body);
