@@ -3,26 +3,26 @@ import { Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail } from "luci
 
 const footerLinks = {
   tienda: [
-    { name: "Calabazas", href: "#calabazas" },
-    { name: "Bombillas", href: "#bombillas" },
-    { name: "Yerba Mate", href: "#yerba" },
-    { name: "Accesorios", href: "#accesorios" },
-    { name: "Sets Completos", href: "#sets" },
-    { name: "Ofertas", href: "#ofertas" },
+    { name: "Calabazas", href: "/productos?categoria=Calabazas" },
+    { name: "Bombillas", href: "/productos?categoria=Bombillas" },
+    { name: "Yerba Mate", href: "/productos?categoria=Yerba%20Mate" },
+    { name: "Accesorios", href: "/productos?categoria=Accesorios" },
+    { name: "Sets Completos", href: "/productos?categoria=Sets" },
+    { name: "Ofertas", href: "/productos" },
   ],
   empresa: [
-    { name: "Nuestra Historia", href: "#historia" },
-    { name: "Artesanos", href: "#artesanos" },
-    { name: "Blog", href: "#blog" },
-    { name: "Prensa", href: "#prensa" },
-    { name: "Trabaja con nosotros", href: "#empleo" },
+    { name: "Nuestra Historia", href: "/nosotros" },
+    { name: "Artesanos", href: "/nosotros" },
+    { name: "Blog", href: "#" },
+    { name: "Prensa", href: "#" },
+    { name: "Trabaja con nosotros", href: "#" },
   ],
   ayuda: [
-    { name: "Preguntas Frecuentes", href: "#faq" },
-    { name: "Envíos", href: "#envios" },
-    { name: "Devoluciones", href: "#devoluciones" },
-    { name: "Guía de tallas", href: "#tallas" },
-    { name: "Contacto", href: "#contacto" },
+    { name: "Preguntas Frecuentes", href: "#" },
+    { name: "Envíos", href: "#" },
+    { name: "Devoluciones", href: "#" },
+    { name: "Guía de tallas", href: "#" },
+    { name: "Contacto", href: "/contacto" },
   ],
 }
 
@@ -47,7 +47,7 @@ export function Footer() {
               <span className="font-serif text-2xl font-bold tracking-tight text-foreground">Matero</span>
             </Link>
             <p className="mt-4 max-w-sm text-muted-foreground leading-relaxed">
-              Desde 2009 llevando la tradición del mate argentino a todo el país. 
+              Desde 2009 llevando la tradición del mate argentino a todo el país.
               Productos artesanales de la más alta calidad.
             </p>
             <div className="mt-6 flex gap-3">
@@ -72,10 +72,7 @@ export function Footer() {
             <ul className="mt-4 space-y-3">
               {footerLinks.tienda.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
+                  <Link href={link.href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                     {link.name}
                   </Link>
                 </li>
@@ -90,10 +87,7 @@ export function Footer() {
             <ul className="mt-4 space-y-3">
               {footerLinks.empresa.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
+                  <Link href={link.href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                     {link.name}
                   </Link>
                 </li>
@@ -108,10 +102,7 @@ export function Footer() {
             <ul className="mt-4 space-y-3">
               {footerLinks.ayuda.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
+                  <Link href={link.href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
                     {link.name}
                   </Link>
                 </li>
@@ -140,10 +131,7 @@ export function Footer() {
             <span className="text-xs text-muted-foreground">Pagá con:</span>
             <div className="flex gap-2">
               {["Visa", "MC", "AMEX", "MP"].map((card) => (
-                <div
-                  key={card}
-                  className="flex h-8 w-12 items-center justify-center rounded bg-secondary text-xs font-medium text-muted-foreground"
-                >
+                <div key={card} className="flex h-8 w-12 items-center justify-center rounded bg-secondary text-xs font-medium text-muted-foreground">
                   {card}
                 </div>
               ))}
@@ -155,12 +143,8 @@ export function Footer() {
         <div className="mt-8 flex flex-col gap-4 border-t border-border pt-8 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
           <p>&copy; 2024 Matero. Todos los derechos reservados.</p>
           <div className="flex justify-center gap-6 sm:justify-start">
-            <Link href="#" className="hover:text-foreground">
-              Términos y condiciones
-            </Link>
-            <Link href="#" className="hover:text-foreground">
-              Política de privacidad
-            </Link>
+            <Link href="#" className="hover:text-foreground">Términos y condiciones</Link>
+            <Link href="#" className="hover:text-foreground">Política de privacidad</Link>
           </div>
         </div>
       </div>
