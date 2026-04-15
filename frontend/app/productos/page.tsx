@@ -1,21 +1,38 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/product-card"
-import { products, categories } from "@/lib/products-data"
 import { Search, SlidersHorizontal, X } from "lucide-react"
+import { ApiProduct, fetchProducts } from "@/lib/api"
+
+const categories = [
+  { id: "calabazas", name: "Calabazas" },
+  { id: "bombillas", name: "Bombillas" },
+  { id: "yerba", name: "Yerba Mate" },
+  { id: "accesorios", name: "Accesorios" },
+  { id: "sets", name: "Sets" },
+]
 
 export default function ProductosPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState("featured")
   const [showFilters, setShowFilters] = useState(false)
+  const [allProducts, setAllProducts] = useState<ApiProduct[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchProducts(1, 100)
+      .then((data) => setAllProducts(data.products))
+      .catch(console.error)
+      .finally(() => setIsLoading(false))
+  }, [])
 
   // Filtrar y ordenar productos
   const filteredProducts = useMemo(() => {
-    let result = [...products]
+    let result = [...allProducts]
 
     // Filtrar por búsqueda
     if (searchQuery) {
@@ -43,23 +60,16 @@ export default function ProductosPage() {
       case "price-high":
         result.sort((a, b) => b.price - a.price)
         break
-      case "newest":
-        result.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0))
-        break
       case "rating":
-        result.sort((a, b) => b.rating - a.rating)
+        result.sort((a, b) => (b.rating || 0) - (a.rating || 0))
         break
       default:
-        // "featured" - ofertas y nuevos primero
-        result.sort((a, b) => {
-          const aScore = (a.isNew ? 2 : 0) + (a.isOnSale ? 1 : 0)
-          const bScore = (b.isNew ? 2 : 0) + (b.isOnSale ? 1 : 0)
-          return bScore - aScore
-        })
+        // "featured" - mantener orden original
+        break
     }
 
     return result
-  }, [searchQuery, selectedCategory, sortBy])
+  }, [allProducts, searchQuery, selectedCategory, sortBy])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -119,7 +129,6 @@ export default function ProductosPage() {
                   className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="featured">Destacados</option>
-                  <option value="newest">Más nuevos</option>
                   <option value="price-low">Menor precio</option>
                   <option value="price-high">Mayor precio</option>
                   <option value="rating">Mejor valorados</option>
@@ -186,8 +195,8 @@ export default function ProductosPage() {
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredProducts.map((product) => (
                       <ProductCard
-                        key={product.id}
-                        id={product.id}
+                        key={product._id}
+                        id={product._id}
                         name={product.name}
                         price={product.price}
                         originalPrice={product.originalPrice}
