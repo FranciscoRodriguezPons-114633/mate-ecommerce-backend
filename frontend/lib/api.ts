@@ -2,12 +2,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
 
 export interface ApiProduct {
   _id: string
+  id?: string
   name: string
   description: string
   price: number
   quantity: number
   category: string
   image: string
+  isNew?: boolean
+  isOnSale?: boolean
+  originalPrice?: number
+  rating?: number
 }
 
 export interface ApiProductsResponse {

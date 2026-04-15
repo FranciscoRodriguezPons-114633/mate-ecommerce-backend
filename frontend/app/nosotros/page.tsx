@@ -124,11 +124,12 @@ export default function NosotrosPage() {
               </div>
 
               <div className="relative">
-                <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
                   <Image
                     src="/hero-mate.jpg"
                     alt="Artesano trabajando en un mate"
                     fill
+                    priority
                     className="object-cover"
                   />
                 </div>
