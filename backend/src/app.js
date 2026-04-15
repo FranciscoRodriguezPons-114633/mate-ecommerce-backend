@@ -3,11 +3,19 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
+const { connectRedis } = require("./config/redis");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Conectar a MongoDB
 connectDB();
+
+// Conectar a Redis
+connectRedis().catch((err) => {
+  console.error("Failed to connect to Redis, continuing without cache:", err);
+  // La aplicación continúa sin Redis si falla la conexión
+});
 
 app.use(cors({
   origin: ["http://localhost:3001", "http://localhost:3000"],
