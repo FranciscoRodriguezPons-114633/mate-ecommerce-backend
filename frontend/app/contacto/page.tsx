@@ -1,9 +1,6 @@
-"use client"
-
-import { useState } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { MapPin, Phone, Mail, Clock, Send } from "lucide-react"
+import { MapPin, Phone, Mail, Clock, Truck, CreditCard, Shield, HelpCircle } from "lucide-react"
 
 const contactInfo = [
   {
@@ -28,35 +25,57 @@ const contactInfo = [
   },
 ]
 
+const faqs = [
+  {
+    question: "¿Cuánto tarda en llegar mi pedido?",
+    answer: "Los envíos dentro de CABA demoran 24-48hs hábiles. Para el resto de Argentina, el tiempo de entrega es de 3 a 7 días hábiles dependiendo de la localidad.",
+  },
+  {
+    question: "¿Hacen envíos a todo el país?",
+    answer: "Sí, realizamos envíos a todas las provincias de Argentina a través de las principales empresas de correo. También contamos con envío gratis en compras superiores a $50.000.",
+  },
+  {
+    question: "¿Puedo cambiar o devolver un producto?",
+    answer: "Tenés 30 días desde la recepción del producto para realizar cambios o devoluciones sin cargo. El producto debe estar sin uso y en su empaque original.",
+  },
+  {
+    question: "¿Qué métodos de pago aceptan?",
+    answer: "Aceptamos tarjetas de crédito y débito de todas las marcas, Mercado Pago, transferencia bancaria y efectivo a través de Rapipago y Pago Fácil.",
+  },
+  {
+    question: "¿Los productos tienen garantía?",
+    answer: "Todos nuestros productos cuentan con garantía de 6 meses por defectos de fabricación. Las calabazas y bombillas artesanales tienen garantía de por vida en el acabado.",
+  },
+  {
+    question: "¿Realizan ventas mayoristas?",
+    answer: "Sí, contamos con precios especiales para compras mayoristas. Escribinos a ventas@matero.com.ar con los detalles de tu consulta y te enviaremos nuestra lista de precios.",
+  },
+]
+
+const features = [
+  {
+    icon: Truck,
+    title: "Envío Gratis",
+    description: "En compras mayores a $50.000 a todo el país",
+  },
+  {
+    icon: CreditCard,
+    title: "Pago Seguro",
+    description: "Todas las tarjetas y Mercado Pago",
+  },
+  {
+    icon: Shield,
+    title: "Garantía",
+    description: "6 meses en todos los productos",
+  },
+  {
+    icon: HelpCircle,
+    title: "Soporte",
+    description: "Atención personalizada por WhatsApp",
+  },
+]
+
 export default function ContactoPage() {
-  const [formData, setFormData] = useState({
-    nombre: "",
-    email: "",
-    asunto: "",
-    mensaje: "",
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    
-    // Simular envío
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    
-    setIsSubmitting(false)
-    setSubmitted(true)
-    setFormData({ nombre: "", email: "", asunto: "", mensaje: "" })
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -66,10 +85,10 @@ export default function ContactoPage() {
         <section className="bg-secondary py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 text-center">
             <h1 className="font-serif text-4xl font-bold text-foreground sm:text-5xl">
-              Contactanos
+              Contacto e Información
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Estamos para ayudarte. Envianos tu consulta y te responderemos a la brevedad.
+              Toda la información que necesitás sobre nuestros servicios, envíos y atención al cliente.
             </p>
           </div>
         </section>
@@ -102,191 +121,142 @@ export default function ContactoPage() {
           </div>
         </section>
 
-        {/* Contact Form & Map */}
-        <section className="py-12 bg-secondary/30">
+        {/* Features Section */}
+        <section className="bg-secondary/30 py-12">
           <div className="mx-auto max-w-7xl px-4">
-            <div className="grid gap-12 lg:grid-cols-2">
-              {/* Form */}
-              <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
-                <h2 className="font-serif text-2xl font-bold text-foreground">
-                  Envianos un mensaje
-                </h2>
-                <p className="mt-2 text-muted-foreground">
-                  Completá el formulario y nos pondremos en contacto con vos.
-                </p>
-
-                {submitted ? (
-                  <div className="mt-8 rounded-lg bg-green-50 p-6 text-center">
-                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                      <Send className="h-6 w-6 text-green-600" />
-                    </div>
-                    <h3 className="font-serif text-lg font-semibold text-green-800">
-                      Mensaje enviado
-                    </h3>
-                    <p className="mt-2 text-sm text-green-700">
-                      Gracias por contactarnos. Te responderemos a la brevedad.
-                    </p>
-                    <button
-                      onClick={() => setSubmitted(false)}
-                      className="mt-4 text-sm font-medium text-green-700 underline hover:text-green-800"
-                    >
-                      Enviar otro mensaje
-                    </button>
+            <div className="text-center mb-10">
+              <h2 className="font-serif text-2xl font-bold text-foreground sm:text-3xl">
+                Beneficios de comprar en Matero
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                Tu experiencia de compra es nuestra prioridad
+              </p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {features.map((feature) => (
+                <div
+                  key={feature.title}
+                  className="flex flex-col items-center text-center p-6"
+                >
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <feature.icon className="h-8 w-8 text-primary" />
                   </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      <div>
-                        <label
-                          htmlFor="nombre"
-                          className="block text-sm font-medium text-foreground"
-                        >
-                          Nombre completo
-                        </label>
-                        <input
-                          type="text"
-                          id="nombre"
-                          name="nombre"
-                          required
-                          value={formData.nombre}
-                          onChange={handleChange}
-                          className="mt-1.5 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                          placeholder="Tu nombre"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="email"
-                          className="block text-sm font-medium text-foreground"
-                        >
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          required
-                          value={formData.email}
-                          onChange={handleChange}
-                          className="mt-1.5 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                          placeholder="tu@email.com"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="asunto"
-                        className="block text-sm font-medium text-foreground"
-                      >
-                        Asunto
-                      </label>
-                      <select
-                        id="asunto"
-                        name="asunto"
-                        required
-                        value={formData.asunto}
-                        onChange={handleChange}
-                        className="mt-1.5 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="">Seleccioná un asunto</option>
-                        <option value="consulta">Consulta general</option>
-                        <option value="productos">Información de productos</option>
-                        <option value="pedido">Estado de mi pedido</option>
-                        <option value="devolucion">Devoluciones y cambios</option>
-                        <option value="mayorista">Ventas mayoristas</option>
-                        <option value="otro">Otro</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="mensaje"
-                        className="block text-sm font-medium text-foreground"
-                      >
-                        Mensaje
-                      </label>
-                      <textarea
-                        id="mensaje"
-                        name="mensaje"
-                        required
-                        rows={5}
-                        value={formData.mensaje}
-                        onChange={handleChange}
-                        className="mt-1.5 w-full resize-none rounded-lg border border-input bg-background px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        placeholder="Escribí tu mensaje..."
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                          Enviando...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-4 w-4" />
-                          Enviar mensaje
-                        </>
-                      )}
-                    </button>
-                  </form>
-                )}
-              </div>
-
-              {/* Map placeholder & Additional Info */}
-              <div className="space-y-6">
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    <div className="text-center p-8">
-                      <MapPin className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                      <p className="mt-4 font-serif text-lg font-medium text-foreground">
-                        Nuestra ubicación
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Av. Corrientes 1234, Buenos Aires
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-card p-6">
                   <h3 className="font-serif text-lg font-semibold text-foreground">
-                    Preguntas frecuentes
+                    {feature.title}
                   </h3>
-                  <div className="mt-4 space-y-4">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        ¿Cuánto tarda en llegar mi pedido?
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Los envíos dentro de CABA demoran 24-48hs. Al interior, de 3 a 7 días hábiles.
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        ¿Hacen envíos a todo el país?
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Sí, realizamos envíos a todas las provincias de Argentina.
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        ¿Puedo cambiar o devolver un producto?
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Tenés 30 días para realizar cambios o devoluciones sin cargo.
-                      </p>
-                    </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Map & Location */}
+        <section className="py-12">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="aspect-video bg-muted flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <MapPin className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                    <p className="mt-4 font-serif text-lg font-medium text-foreground">
+                      Visitanos en nuestra tienda
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Av. Corrientes 1234, Buenos Aires
+                    </p>
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Estamos a pocas cuadras del Obelisco, en pleno centro porteño.
+                      Contamos con estacionamiento cercano y fácil acceso en transporte público.
+                    </p>
                   </div>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
+                <h3 className="font-serif text-xl font-bold text-foreground">
+                  Información adicional
+                </h3>
+                <div className="mt-6 space-y-4">
+                  <div className="border-b border-border pb-4">
+                    <p className="font-medium text-foreground">Atención al cliente</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Nuestro equipo está disponible de lunes a viernes de 9:00 a 18:00 hs.
+                      También podés contactarnos por WhatsApp al +54 11 4567-8900.
+                    </p>
+                  </div>
+                  <div className="border-b border-border pb-4">
+                    <p className="font-medium text-foreground">Seguinos en redes</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Encontranos en Instagram, Facebook y TikTok como @matero.ar
+                      Compartimos tips, recetas y las últimas novedades.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Showroom</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Visitá nuestra tienda física y conocé toda nuestra colección.
+                      Te invitamos a tomar unos mates mientras elegís tus productos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQs Section */}
+        <section className="bg-secondary/30 py-12">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="text-center mb-10">
+              <h2 className="font-serif text-2xl font-bold text-foreground sm:text-3xl">
+                Preguntas Frecuentes
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                Respuestas a las consultas más comunes de nuestros clientes
+              </p>
+            </div>
+            
+            <div className="grid gap-6 lg:grid-cols-2">
+              {faqs.map((faq, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-border bg-card p-6"
+                >
+                  <h4 className="font-medium text-foreground">
+                    {faq.question}
+                  </h4>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    {faq.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-16">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="rounded-2xl bg-primary p-8 sm:p-12 text-center">
+              <h2 className="font-serif text-2xl font-bold text-primary-foreground sm:text-3xl">
+                ¿Tenés alguna consulta específica?
+              </h2>
+              <p className="mt-4 text-primary-foreground/80 max-w-2xl mx-auto">
+                Escribinos por WhatsApp y te respondemos al instante. 
+                Estamos para ayudarte a encontrar el mate perfecto.
+              </p>
+              <a
+                href="https://wa.me/5491145678900"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-foreground px-6 py-3 font-medium text-primary hover:bg-primary-foreground/90 transition-colors"
+              >
+                <Phone className="h-5 w-5" />
+                Contactar por WhatsApp
+              </a>
             </div>
           </div>
         </section>

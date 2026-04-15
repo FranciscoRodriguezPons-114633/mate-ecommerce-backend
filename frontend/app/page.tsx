@@ -1,230 +1,350 @@
-"use client"
-
-import { useState, useEffect, useMemo } from "react"
-import { useSearchParams } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { ProductCard } from "@/components/product-card"
-import { fetchProducts, ApiProduct } from "@/lib/api"
-import { Search, SlidersHorizontal, X } from "lucide-react"
+import { ArrowRight, Truck, Shield, Award, Leaf } from "lucide-react"
+import { products, categories } from "@/lib/products-data"
 
-const categories = [
-  { id: "calabazas", name: "Calabazas" },
-  { id: "bombillas", name: "Bombillas" },
-  { id: "yerba", name: "Yerba Mate" },
-  { id: "accesorios", name: "Accesorios" },
-  { id: "sets", name: "Sets" },
+const featuredProducts = products.filter((p) => p.isNew || p.isOnSale).slice(0, 4)
+
+const testimonials = [
+  {
+    name: "Martín García",
+    location: "Buenos Aires",
+    text: "La calidad de los mates es increíble. Se nota el trabajo artesanal en cada detalle. Ya hice tres pedidos.",
+    image: "/testimonial-1.jpg",
+  },
+  {
+    name: "Carolina Mendez",
+    location: "Córdoba",
+    text: "Excelente atención y envío super rápido. El mate de algarrobo que compré es una obra de arte.",
+    image: "/testimonial-2.jpg",
+  },
+  {
+    name: "Roberto Fernández",
+    location: "Mendoza",
+    text: "Los mejores precios que encontré y la calidad es premium. Muy recomendable para cualquier matero.",
+    image: "/testimonial-3.jpg",
+  },
 ]
 
-export default function ProductosPage() {
-  const searchParams = useSearchParams()
-  const [allProducts, setAllProducts] = useState<ApiProduct[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(
-    searchParams.get("categoria")
-  )
-  const [sortBy, setSortBy] = useState("featured")
-  const [showFilters, setShowFilters] = useState(false)
+const features = [
+  {
+    icon: Truck,
+    title: "Envío Gratis",
+    description: "En compras mayores a $50.000",
+  },
+  {
+    icon: Shield,
+    title: "Compra Segura",
+    description: "Protección en cada transacción",
+  },
+  {
+    icon: Award,
+    title: "Calidad Premium",
+    description: "Productos artesanales únicos",
+  },
+  {
+    icon: Leaf,
+    title: "100% Natural",
+    description: "Materiales sustentables",
+  },
+]
 
-  useEffect(() => {
-    fetchProducts(1, 100)
-      .then((data) => setAllProducts(data.products))
-      .catch(console.error)
-      .finally(() => setIsLoading(false))
-  }, [])
-
-  const filteredProducts = useMemo(() => {
-    let result = [...allProducts]
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query) ||
-          p.category.toLowerCase().includes(query)
-      )
-    }
-
-    if (selectedCategory) {
-      result = result.filter(
-        (p) => p.category.toLowerCase() === selectedCategory.toLowerCase()
-      )
-    }
-
-    switch (sortBy) {
-      case "price-low":
-        result.sort((a, b) => a.price - b.price)
-        break
-      case "price-high":
-        result.sort((a, b) => b.price - a.price)
-        break
-      default:
-        break
-    }
-
-    return result
-  }, [allProducts, searchQuery, selectedCategory, sortBy])
-
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
       <main className="flex-1">
-        <section className="bg-secondary py-12">
-          <div className="mx-auto max-w-7xl px-4 text-center">
-            <h1 className="font-serif text-4xl font-bold text-foreground">
-              Nuestros Productos
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Descubrí nuestra selección de mates, bombillas, yerba y accesorios artesanales de la más alta calidad.
-            </p>
+        {/* Hero Section - Diseño editorial elegante */}
+        <section className="relative overflow-hidden">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:py-28 lg:py-36">
+            <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+              {/* Contenido */}
+              <div className="order-2 lg:order-1">
+                <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                  Tradición Argentina
+                </p>
+                <h1 className="mt-4 font-serif text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl">
+                  <span className="text-balance">El arte de compartir un buen mate</span>
+                </h1>
+                <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">
+                  Descubrí nuestra colección de mates artesanales, bombillas de alpaca y accesorios premium. 
+                  Cada pieza es única, hecha a mano por artesanos argentinos.
+                </p>
+                <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <Link
+                    href="/productos"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-4 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Ver Productos
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="/nosotros"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-4 font-medium text-foreground transition-colors hover:text-primary"
+                  >
+                    Nuestra Historia
+                  </Link>
+                </div>
+              </div>
+
+              {/* Imagen Hero */}
+              <div className="order-1 lg:order-2">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
+                  <Image
+                    src="/hero-mate.jpg"
+                    alt="Mate artesanal argentino"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="py-8">
+        {/* Features Bar */}
+        <section className="border-y border-border bg-secondary/30">
+          <div className="mx-auto max-w-7xl px-4 py-8">
+            <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+              {features.map((feature) => (
+                <div key={feature.title} className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <feature.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">{feature.title}</p>
+                    <p className="text-sm text-muted-foreground">{feature.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Categorías - Grid elegante */}
+        <section className="py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground hover:bg-secondary transition-colors sm:hidden"
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filtros
-                </button>
-
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="featured">Destacados</option>
-                  <option value="price-low">Menor precio</option>
-                  <option value="price-high">Mayor precio</option>
-                </select>
-              </div>
+            <div className="text-center">
+              <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                Explorá
+              </p>
+              <h2 className="mt-3 font-serif text-3xl font-bold text-foreground sm:text-4xl">
+                Nuestras Categorías
+              </h2>
             </div>
 
-            <div className="flex gap-8">
-              <aside className={`${showFilters ? "block" : "hidden"} sm:block w-full sm:w-64 flex-shrink-0`}>
-                <div className="bg-card border border-border rounded-xl p-4">
-                  <h3 className="font-medium text-foreground mb-4">Categorías</h3>
-
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setSelectedCategory(null)}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                        !selectedCategory
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      Todas las categorías
-                    </button>
-
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.id}
-                        onClick={() => setSelectedCategory(cat.name)}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                          selectedCategory === cat.name
-                            ? "bg-primary text-primary-foreground"
-                            : "text-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  {(selectedCategory || searchQuery) && (
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(null)
-                        setSearchQuery("")
-                      }}
-                      className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      Limpiar filtros
-                    </button>
-                  )}
-                </div>
-              </aside>
-
-              <div className="flex-1">
-                {isLoading ? (
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(6)].map((_, i) => (
-                      <div key={i} className="rounded-xl bg-card border border-border animate-pulse">
-                        <div className="aspect-square bg-secondary rounded-t-xl" />
-                        <div className="p-4 space-y-2">
-                          <div className="h-4 bg-secondary rounded w-3/4" />
-                          <div className="h-4 bg-secondary rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {filteredProducts.length} producto{filteredProducts.length !== 1 ? "s" : ""} encontrado{filteredProducts.length !== 1 ? "s" : ""}
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {categories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/productos?categoria=${category.id}`}
+                  className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-muted"
+                >
+                  <Image
+                    src={category.image}
+                    alt={category.name}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <h3 className="font-serif text-xl font-semibold text-white">
+                      {category.name}
+                    </h3>
+                    <p className="mt-2 flex items-center gap-2 text-sm text-white/80 transition-colors group-hover:text-white">
+                      Ver productos
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
 
-                    {filteredProducts.length > 0 ? (
-                      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {filteredProducts.map((product, index) => (
-                          <ProductCard
-                            key={product._id}
-                            id={product._id}
-                            name={product.name}
-                            price={product.price}
-                            image={product.image}
-                            category={product.category}
-                            rating={5}
-                            priority={index === 0}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <p className="text-lg text-muted-foreground">
-                          No encontramos productos con esos filtros.
-                        </p>
-                        <button
-                          onClick={() => {
-                            setSelectedCategory(null)
-                            setSearchQuery("")
-                          }}
-                          className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                        >
-                          Ver todos los productos
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
+        {/* Productos Destacados */}
+        <section className="bg-secondary/30 py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                  Lo más buscado
+                </p>
+                <h2 className="mt-3 font-serif text-3xl font-bold text-foreground sm:text-4xl">
+                  Productos Destacados
+                </h2>
               </div>
+              <Link
+                href="/productos"
+                className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors hover:text-primary"
+              >
+                Ver todos
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {featuredProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  href="/productos"
+                  className="block"
+                >
+                  <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                    {product.isOnSale && (
+                      <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
+                        Oferta
+                      </span>
+                    )}
+                    {product.isNew && !product.isOnSale && (
+                      <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                        Nuevo
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {product.category}
+                    </p>
+                    <h3 className="mt-1 font-medium text-foreground line-clamp-1">
+                      {product.name}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="font-semibold text-foreground">
+                        ${product.price.toLocaleString("es-AR")}
+                      </span>
+                      {product.originalPrice && (
+                        <span className="text-sm text-muted-foreground line-through">
+                          ${product.originalPrice.toLocaleString("es-AR")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Sección Historia / Propuesta de valor */}
+        <section className="py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
+                <Image
+                  src="/product-set-1.jpg"
+                  alt="Set matero completo"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                  Nuestra Pasión
+                </p>
+                <h2 className="mt-3 font-serif text-3xl font-bold text-foreground sm:text-4xl">
+                  Artesanía que une generaciones
+                </h2>
+                <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
+                  Cada mate que ofrecemos cuenta una historia. Trabajamos con artesanos de todo el país 
+                  que mantienen vivas las técnicas tradicionales, creando piezas únicas que pasan de 
+                  mano en mano, de generación en generación.
+                </p>
+                <ul className="mt-8 space-y-4">
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                    <span className="text-foreground">Más de 50 artesanos argentinos</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                    <span className="text-foreground">Materiales 100% naturales y sustentables</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                    <span className="text-foreground">Garantía de por vida en acabados</span>
+                  </li>
+                </ul>
+                <Link
+                  href="/nosotros"
+                  className="mt-10 inline-flex items-center gap-2 font-medium text-foreground transition-colors hover:text-primary"
+                >
+                  Conocé nuestra historia
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonios */}
+        <section className="bg-secondary/30 py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="text-center">
+              <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                Testimonios
+              </p>
+              <h2 className="mt-3 font-serif text-3xl font-bold text-foreground sm:text-4xl">
+                Lo que dicen nuestros clientes
+              </h2>
+            </div>
+
+            <div className="mt-12 grid gap-8 md:grid-cols-3">
+              {testimonials.map((testimonial, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-border bg-card p-8"
+                >
+                  <p className="text-foreground leading-relaxed">
+                    &quot;{testimonial.text}&quot;
+                  </p>
+                  <div className="mt-6 flex items-center gap-4">
+                    <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted">
+                      <Image
+                        src={testimonial.image}
+                        alt={testimonial.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{testimonial.name}</p>
+                      <p className="text-sm text-muted-foreground">{testimonial.location}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Final */}
+        <section className="py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4">
+            <div className="rounded-2xl bg-primary px-8 py-16 text-center sm:px-16 sm:py-20">
+              <h2 className="font-serif text-3xl font-bold text-primary-foreground sm:text-4xl">
+                <span className="text-balance">Empezá tu experiencia matera hoy</span>
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-primary-foreground/80">
+                Unite a miles de argentinos que ya disfrutan de nuestros productos artesanales. 
+                Envío gratis en tu primera compra.
+              </p>
+              <Link
+                href="/productos"
+                className="mt-8 inline-flex items-center gap-2 rounded-lg bg-primary-foreground px-8 py-4 font-medium text-primary transition-colors hover:bg-primary-foreground/90"
+              >
+                Explorar Productos
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </section>
