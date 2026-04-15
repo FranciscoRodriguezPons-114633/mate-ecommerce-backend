@@ -16,6 +16,7 @@ const getProducts = async (req, res, next) => {
   }
 
   try {
+    // El caché cache-aside está implementado en el service
     const result = await getAllProducts(page, limit);
     res.json(result);
   } catch (error) {
