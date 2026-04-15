@@ -193,7 +193,7 @@ export default function ProductosPage() {
 
                     {filteredProducts.length > 0 ? (
                       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {filteredProducts.map((product) => (
+                        {filteredProducts.map((product, index) => (
                           <ProductCard
                             key={product._id}
                             id={product._id}
@@ -202,6 +202,7 @@ export default function ProductosPage() {
                             image={product.image}
                             category={product.category}
                             rating={5}
+                            priority={index === 0}
                           />
                         ))}
                       </div>

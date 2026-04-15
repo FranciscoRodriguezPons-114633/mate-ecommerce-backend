@@ -15,6 +15,7 @@ interface ProductCardProps {
   rating?: number
   isNew?: boolean
   isOnSale?: boolean
+  priority?: boolean
 }
 
 export function ProductCard({
@@ -27,6 +28,7 @@ export function ProductCard({
   rating = 5,
   isNew,
   isOnSale,
+  priority = false,
 }: ProductCardProps) {
   const { addToCart } = useCart()
 
@@ -72,6 +74,7 @@ export function ProductCard({
             src={image}
             alt={name}
             fill
+            priority={priority}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>
