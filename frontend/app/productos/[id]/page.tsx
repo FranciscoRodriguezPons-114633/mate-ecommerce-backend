@@ -19,7 +19,7 @@ import {
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/context/cart-context"
-import { fetchProductById, fetchProducts, ApiProduct } from "@/lib/api"
+import { fetchProductById, fetchProducts, trackProductView, ApiProduct } from "@/lib/api"
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -39,6 +39,7 @@ export default function ProductDetailPage() {
     fetchProductById(id)
       .then((data) => {
         setProduct(data)
+        trackProductView(id).catch(console.error)
         // Cargar productos relacionados
         return fetchProducts(1, 20)
       })

@@ -8,6 +8,11 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controllers/product.controller");
+const {
+  trackProductView,
+  getTopProducts,
+  getTopSoldProductsController,
+} = require("../controllers/analytics.controller");
 
 const validateObjectId = require("../middlewares/validateObjectId");
 const {
@@ -19,7 +24,10 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const requireAdmin = require("../middlewares/requireAdmin");
 
 router.get("/", getProducts);
+router.get("/analytics/top", getTopProducts);
+router.get("/analytics/top-sold", getTopSoldProductsController);
 router.get("/:id", validateObjectId, getProductById);
+router.post("/:id/view", trackProductView);
 
 router.post(
   "/",

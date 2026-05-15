@@ -2,6 +2,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { TopViewedProducts } from "@/components/top-viewed-products"
+import { TopSoldNodes } from "@/components/top-sold-nodes"
 import { ArrowRight, Truck, Shield, Award, Leaf } from "lucide-react"
 import { products, categories } from "@/lib/products-data"
 
@@ -235,6 +237,10 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        <TopSoldNodes />
+
+        <TopViewedProducts />
 
         {/* Sección Historia / Propuesta de valor */}
         <section className="py-20 sm:py-28">

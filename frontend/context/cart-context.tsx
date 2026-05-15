@@ -1,6 +1,13 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react"
+import { useAuth } from "@/context/auth-context"
+import {
+  clearSavedCart,
+  fetchCart,
+  saveCart,
+  type ApiCartItem,
+} from "@/lib/api"
 
 // Tipo para un producto en el carrito
 export interface CartItem {
@@ -26,8 +33,28 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth()
   const [items, setItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const hasLoadedRemoteCart = useRef(false)
+
+  const toCartItem = (item: ApiCartItem): CartItem => ({
+    id: item.id || item.product || item.product_id || "",
+    name: item.name,
+    price: Number(item.price || 0),
+    image: item.image || "/placeholder.jpg",
+    quantity: Number(item.quantity || 0),
+  })
+
+  const toApiCartItem = (item: CartItem): ApiCartItem => ({
+    id: item.id,
+    product: item.id,
+    product_id: item.id,
+    name: item.name,
+    price: item.price,
+    image: item.image,
+    quantity: item.quantity,
+  })
 
   // Cargar carrito desde localStorage al iniciar
   useEffect(() => {
@@ -37,10 +64,56 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Cargar carrito persistido cuando el usuario inicia sesion
+  useEffect(() => {
+    if (!token) {
+      hasLoadedRemoteCart.current = false
+      return
+    }
+
+    let isActive = true
+
+    fetchCart(token)
+      .then((cart) => {
+        if (!isActive) return
+
+        const remoteItems = cart.items.map(toCartItem).filter((item) => item.id)
+
+        if (remoteItems.length > 0) {
+          setItems(remoteItems)
+        } else if (items.length > 0) {
+          saveCart(token, items.map(toApiCartItem)).catch(console.error)
+        }
+
+        hasLoadedRemoteCart.current = true
+      })
+      .catch((error) => {
+        console.error("No se pudo cargar el carrito persistido:", error)
+        hasLoadedRemoteCart.current = true
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [token])
+
   // Guardar carrito en localStorage cuando cambie
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(items))
   }, [items])
+
+  // Guardar carrito en Cassandra cuando hay sesion activa
+  useEffect(() => {
+    if (!token || !hasLoadedRemoteCart.current) return
+
+    const timeoutId = window.setTimeout(() => {
+      saveCart(token, items.map(toApiCartItem)).catch((error) => {
+        console.error("No se pudo guardar el carrito persistido:", error)
+      })
+    }, 300)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [items, token])
 
   // Agregar producto al carrito
   const addToCart = (product: Omit<CartItem, "quantity">) => {
@@ -80,6 +153,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Vaciar carrito
   const clearCart = () => {
     setItems([])
+    if (token) {
+      clearSavedCart(token).catch((error) => {
+        console.error("No se pudo limpiar el carrito persistido:", error)
+      })
+    }
   }
 
   // Calcular totales

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
-    "test": "jest"
+    "test": "jest",
+    "seed:cassandra": "node src/seed.cassandra.js"
   },
   "keywords": [],
   "author": "",
@@ -14,12 +15,14 @@
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cassandra-driver": "^4.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "joi": "^18.1.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.3",
+    "neo4j-driver": "^6.0.1",
     "redis": "^5.12.1"
   },
   "devDependencies": {
