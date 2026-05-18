@@ -168,6 +168,7 @@ const getTopSoldProductsController = async (req, res, next) => {
         image: product ? product.image : null,
         category: product ? product.category : null,
         price: product ? product.price : null,
+        discountPercentage: product ? product.discountPercentage || 0 : null,
         product: product || null,
       };
     });

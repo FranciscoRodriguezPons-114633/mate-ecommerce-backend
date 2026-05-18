@@ -15,6 +15,9 @@ const validateProductBody = (body) => {
   if (quantity !== undefined && quantity < 0) {
     return { error: "La cantidad no puede ser negativa", status: 400 };
   }
+  if (body.discountPercentage !== undefined && (body.discountPercentage < 0 || body.discountPercentage > 90)) {
+    return { error: "El descuento debe estar entre 0 y 90", status: 400 };
+  }
   if (description && description.length > 500) {
     return { error: "La descripción no puede exceder 500 caracteres", status: 400 };
   }

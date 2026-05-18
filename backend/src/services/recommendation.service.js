@@ -1,6 +1,7 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
+const neo4j = require("neo4j-driver");
 const { driver, isNeo4jAvailable } = require("../config/neo4j");
 
 const CYPHER_COLLABORATIVE_RECOMMENDATIONS = `
@@ -23,6 +24,23 @@ RETURN candidate, category
 LIMIT $limit
 `;
 
+const CYPHER_DISCOUNT_BENEFITS = `
+MATCH (p:Product)
+WITH p,
+     coalesce(p.descuento, p.discountPercentage, 0) AS descuento,
+     coalesce(p.precio, p.price, 0) AS precioActual,
+     coalesce(p.precioOriginal, p.price, p.precio, 0) AS precioOriginal
+WHERE descuento IS NOT NULL AND descuento > 0
+RETURN p.id AS id,
+       coalesce(p.nombre, p.name) AS nombre,
+       coalesce(p.imageUrl, p.image) AS imageUrl,
+       precioActual,
+       precioOriginal,
+       descuento
+ORDER BY descuento DESC
+LIMIT $limit
+`;
+
 const nodeKey = (type, id) => `${type}:${id}`;
 
 const addNode = (map, node) => {
@@ -30,6 +48,15 @@ const addNode = (map, node) => {
   if (!map.has(key)) {
     map.set(key, node);
   }
+};
+
+const toNeo4jLimit = (limit, fallback = 8) => {
+  const parsedLimit = Number(limit);
+  const safeLimit = Number.isFinite(parsedLimit) && parsedLimit >= 0
+    ? Math.trunc(parsedLimit)
+    : fallback;
+
+  return neo4j.int(safeLimit);
 };
 
 const productToRecommendation = (product, score, reason, position) => ({
@@ -41,8 +68,93 @@ const productToRecommendation = (product, score, reason, position) => ({
   image: product.image,
   category: product.category,
   price: product.price,
+  discountPercentage: product.discountPercentage || 0,
   product,
 });
+
+const productToBenefit = (product) => ({
+  _id: product._id.toString(),
+  name: product.name,
+  description: product.description,
+  price: product.price,
+  stock: product.stock,
+  category: product.category,
+  image: product.image,
+  discountPercentage: product.discountPercentage || 0,
+});
+
+const getMongoDiscountBenefits = async (limit = 8, products = null) => {
+  const sourceProducts = products || await Product.find({
+    discountPercentage: { $gt: 0 },
+  }).lean();
+
+  return sourceProducts
+    .filter((product) => Number(product.discountPercentage || 0) > 0)
+    .sort((a, b) => Number(b.discountPercentage || 0) - Number(a.discountPercentage || 0))
+    .slice(0, Number(limit) || 8)
+    .map(productToBenefit);
+};
+
+const getNeo4jDiscountBenefits = async (limit = 8) => {
+  if (!isNeo4jAvailable()) return null;
+
+  const session = driver.session();
+
+  try {
+    const result = await session.executeRead((tx) =>
+      tx.run(CYPHER_DISCOUNT_BENEFITS, {
+        limit: toNeo4jLimit(limit),
+      })
+    );
+
+    if (!result.records.length) return null;
+
+    const productIds = result.records
+      .map((record) => record.get("id"))
+      .filter(Boolean);
+    const products = await Product.find({ _id: { $in: productIds } }).lean();
+    const productsById = new Map(
+      products.map((product) => [product._id.toString(), product])
+    );
+
+    return result.records
+      .map((record) => {
+        const productId = record.get("id");
+        const product = productsById.get(productId);
+
+        if (product) {
+          return productToBenefit(product);
+        }
+
+        return {
+          _id: productId,
+          name: record.get("nombre"),
+          description: "",
+          price: Number(record.get("precioActual") || 0),
+          stock: 0,
+          category: "",
+          image: record.get("imageUrl") || "/placeholder.jpg",
+          discountPercentage: Number(record.get("descuento") || 0),
+        };
+      })
+      .filter((product) => product._id && product.name);
+  } finally {
+    await session.close();
+  }
+};
+
+const getDiscountBenefits = async (limit = 8, products = null) => {
+  try {
+    const neo4jBenefits = await getNeo4jDiscountBenefits(limit);
+    if (neo4jBenefits && neo4jBenefits.length) {
+      return neo4jBenefits;
+    }
+  } catch (error) {
+    console.error("No se pudieron obtener beneficios desde Neo4j:", error.message);
+  }
+
+  return getMongoDiscountBenefits(limit, products);
+};
 
 const getNeo4jRecommendations = async (userId, limit) => {
   const session = driver.session();
@@ -51,7 +163,7 @@ const getNeo4jRecommendations = async (userId, limit) => {
     const result = await session.executeRead((tx) =>
       tx.run(CYPHER_COLLABORATIVE_RECOMMENDATIONS, {
         userId,
-        limit: Number(limit),
+        limit: toNeo4jLimit(limit),
       })
     );
 
@@ -259,6 +371,7 @@ const getMongoRecommendations = async (userId, limit) => {
       name: user ? user.name : "Usuario",
     },
     recommendations,
+    benefits: await getMongoDiscountBenefits(limit, allProducts),
     graph: {
       nodes: Array.from(nodes.values()).slice(0, 32),
       relationships: relationships.slice(0, 48),
@@ -271,6 +384,7 @@ const getMongoRecommendations = async (userId, limit) => {
     cypherExamples: {
       collaborative: CYPHER_COLLABORATIVE_RECOMMENDATIONS.trim(),
       categoryTraversal: CYPHER_CATEGORY_TRAVERSAL.trim(),
+      discountBenefits: CYPHER_DISCOUNT_BENEFITS.trim(),
     },
   };
 };
@@ -286,6 +400,7 @@ const getRecommendationGraph = async (userId, limit = 8) => {
           ...fallback,
           source: "neo4j",
           recommendations: neo4jRecommendations,
+          benefits: await getDiscountBenefits(limit),
         };
       }
     } catch (error) {

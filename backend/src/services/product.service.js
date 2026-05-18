@@ -121,6 +121,9 @@ const addProduct = async (data) => {
     if (data.quantity !== undefined && data.quantity < 0) {
       throw new Error("La cantidad no puede ser negativa");
     }
+    if (data.discountPercentage !== undefined && (data.discountPercentage < 0 || data.discountPercentage > 90)) {
+      throw new Error("El descuento debe estar entre 0 y 90");
+    }
     if (data.description && data.description.length > 500) {
       throw new Error("La descripción no puede exceder 500 caracteres");
     }
@@ -147,6 +150,9 @@ const updateProductService = async (id, data) => {
     }
     if (data.quantity !== undefined && data.quantity < 0) {
       throw new Error("La cantidad no puede ser negativa");
+    }
+    if (data.discountPercentage !== undefined && (data.discountPercentage < 0 || data.discountPercentage > 90)) {
+      throw new Error("El descuento debe estar entre 0 y 90");
     }
     if (data.description && data.description.length > 500) {
       throw new Error("La descripción no puede exceder 500 caracteres");

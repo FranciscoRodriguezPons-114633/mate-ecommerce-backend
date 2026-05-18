@@ -1,6 +1,12 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 
+const getDiscountedPrice = (product) => {
+  const discount = Math.min(Math.max(Number(product.discountPercentage || 0), 0), 90);
+  if (!discount) return product.price;
+  return Math.round(product.price * (1 - discount / 100));
+};
+
 const createOrderService = async (userId, items) => {
   const orderItems = [];
   let total = 0;
@@ -16,12 +22,13 @@ const createOrderService = async (userId, items) => {
       throw new Error(`Stock insuficiente para ${product.name}`);
     }
 
-    const subtotal = product.price * item.quantity;
+    const unitPrice = getDiscountedPrice(product);
+    const subtotal = unitPrice * item.quantity;
 
     orderItems.push({
       product: product._id,
       name: product.name,
-      price: product.price,
+      price: unitPrice,
       quantity: item.quantity,
       subtotal,
       image: product.image,

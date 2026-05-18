@@ -39,11 +39,15 @@ const productRoutes = require("./routes/product.routes");
 const authRoutes = require("./routes/auth.routes");
 const orderRoutes = require("./routes/order.routes");
 const recommendationRoutes = require("./routes/recommendation.routes");
+const customerJourneyRoutes = require("./routes/customerJourney.routes");
+const kitBuilderRoutes = require("./routes/kitBuilder.routes");
 
 app.use("/api/products", productRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/customer-journey", customerJourneyRoutes);
+app.use("/api/kit-builder", kitBuilderRoutes);
 
 app.get("/", (req, res) => {
   res.send("API funcionando");
