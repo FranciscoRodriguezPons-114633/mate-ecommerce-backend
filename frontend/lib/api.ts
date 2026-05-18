@@ -6,6 +6,7 @@ export interface ApiProduct {
   name: string
   description: string
   price: number
+  discountPercentage?: number
   quantity: number
   category: string
   image: string
@@ -57,6 +58,7 @@ export interface TopSoldProduct {
   image: string | null
   category: string | null
   price: number | null
+  discountPercentage?: number | null
   product?: ApiProduct | null
 }
 
@@ -86,6 +88,7 @@ export interface ProductRecommendation {
   image: string
   category: string
   price: number
+  discountPercentage?: number
   product: ApiProduct
 }
 
@@ -96,6 +99,7 @@ export interface RecommendationResponse {
     name: string
   }
   recommendations: ProductRecommendation[]
+  benefits?: ApiProduct[]
   graph: {
     nodes: RecommendationNode[]
     relationships: RecommendationRelationship[]
@@ -108,7 +112,91 @@ export interface RecommendationResponse {
   cypherExamples: {
     collaborative: string
     categoryTraversal: string
+    discountBenefits?: string
   }
+}
+
+export interface JourneyProduct {
+  id: string
+  name: string
+  image?: string
+  category: string
+  quantity: number
+  subtotal: number
+}
+
+export interface JourneyTimelineStep {
+  id: string
+  date: string
+  total: number
+  status: string
+  products: JourneyProduct[]
+  newCategories: string[]
+}
+
+export interface CustomerJourneyResponse {
+  source: "neo4j" | "mongo-fallback"
+  user: {
+    id: string
+    name: string
+    email: string
+  }
+  level: {
+    label: string
+    progress: number
+    current: number
+    next: string | null
+    nextAt: number | null
+  }
+  stats: {
+    totalOrders: number
+    categoriesCount: number
+    categories: string[]
+    topProduct: {
+      id: string
+      name: string
+      image?: string
+      quantity: number
+    } | null
+  }
+  timeline: JourneyTimelineStep[]
+  prediction: {
+    category: string
+    confidence: number
+    href: string
+  } | null
+}
+
+export interface KitProduct {
+  id: string
+  name: string
+  image?: string
+  price: number
+  discountPercentage?: number
+  category: string
+}
+
+export interface KitItem {
+  category: string
+  status: "owned" | "missing"
+  product: KitProduct | null
+  sales: number
+}
+
+export interface KitBuilderResponse {
+  source: "neo4j" | "mongo-fallback"
+  categories: string[]
+  completed: number
+  total: number
+  progress: number
+  items: KitItem[]
+  missing: KitItem[]
+  discount: number
+  coupon: {
+    code: string
+    message: string
+    discount: number
+  } | null
 }
 
 function authHeaders(token: string) {
@@ -116,6 +204,20 @@ function authHeaders(token: string) {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   }
+}
+
+export function getProductDiscount(product?: Partial<ApiProduct> | null): number {
+  return Math.min(Math.max(Number(product?.discountPercentage || 0), 0), 90)
+}
+
+export function getProductFinalPrice(product?: Partial<ApiProduct> | null): number {
+  const price = Number(product?.price || 0)
+  const discount = getProductDiscount(product)
+  return discount > 0 ? Math.round(price * (1 - discount / 100)) : price
+}
+
+export function isProductDiscounted(product?: Partial<ApiProduct> | null): boolean {
+  return getProductDiscount(product) > 0
 }
 
 export async function fetchProducts(page = 1, limit = 20): Promise<ApiProductsResponse> {
@@ -183,5 +285,21 @@ export async function fetchRecommendations(
     headers: authHeaders(token),
   })
   if (!res.ok) throw new Error("Error al obtener recomendaciones")
+  return res.json()
+}
+
+export async function fetchCustomerJourney(token: string): Promise<CustomerJourneyResponse> {
+  const res = await fetch(`${API_URL}/customer-journey`, {
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error("Error al obtener el recorrido del cliente")
+  return res.json()
+}
+
+export async function fetchKitBuilder(token: string): Promise<KitBuilderResponse> {
+  const res = await fetch(`${API_URL}/kit-builder`, {
+    headers: authHeaders(token),
+  })
+  if (!res.ok) throw new Error("Error al obtener el armador de kit")
   return res.json()
 }

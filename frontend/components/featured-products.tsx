@@ -3,7 +3,13 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ProductCard } from "@/components/product-card"
-import { fetchProducts, ApiProduct } from "@/lib/api"
+import {
+  fetchProducts,
+  ApiProduct,
+  getProductDiscount,
+  getProductFinalPrice,
+  isProductDiscounted,
+} from "@/lib/api"
 import { ArrowRight } from "lucide-react"
 
 export function FeaturedProducts() {
@@ -59,10 +65,13 @@ export function FeaturedProducts() {
                 key={product._id}
                 id={product._id}
                 name={product.name}
-                price={product.price}
+                price={getProductFinalPrice(product)}
+                originalPrice={isProductDiscounted(product) ? product.price : product.originalPrice}
+                discountPercentage={getProductDiscount(product)}
                 image={product.image}
                 category={product.category}
                 rating={5}
+                isOnSale={isProductDiscounted(product) || product.isOnSale}
               />
             ))
           )}

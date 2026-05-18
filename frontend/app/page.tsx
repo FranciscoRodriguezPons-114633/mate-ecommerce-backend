@@ -2,12 +2,11 @@ import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { FeaturedProducts } from "@/components/featured-products"
 import { TopViewedProducts } from "@/components/top-viewed-products"
 import { TopSoldNodes } from "@/components/top-sold-nodes"
 import { ArrowRight, Truck, Shield, Award, Leaf } from "lucide-react"
-import { products, categories } from "@/lib/products-data"
-
-const featuredProducts = products.filter((p) => p.isNew || p.isOnSale).slice(0, 4)
+import { categories } from "@/lib/products-data"
 
 const testimonials = [
   {
@@ -168,75 +167,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Productos Destacados */}
-        <section className="bg-secondary/30 py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-4">
-            <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
-                  Lo más buscado
-                </p>
-                <h2 className="mt-3 font-serif text-3xl font-bold text-foreground sm:text-4xl">
-                  Productos Destacados
-                </h2>
-              </div>
-              <Link
-                href="/productos"
-                className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors hover:text-primary"
-              >
-                Ver todos
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {featuredProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href="/productos"
-                  className="block"
-                >
-                  <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                    {product.isOnSale && (
-                      <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-                        Oferta
-                      </span>
-                    )}
-                    {product.isNew && !product.isOnSale && (
-                      <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
-                        Nuevo
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {product.category}
-                    </p>
-                    <h3 className="mt-1 font-medium text-foreground line-clamp-1">
-                      {product.name}
-                    </h3>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="font-semibold text-foreground">
-                        ${product.price.toLocaleString("es-AR")}
-                      </span>
-                      {product.originalPrice && (
-                        <span className="text-sm text-muted-foreground line-through">
-                          ${product.originalPrice.toLocaleString("es-AR")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+        <FeaturedProducts />
 
         <TopSoldNodes />
 

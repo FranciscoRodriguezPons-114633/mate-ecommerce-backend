@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Medal, ShoppingBag } from "lucide-react"
-import { fetchTopSoldProducts, type TopSoldProduct } from "@/lib/api"
+import { fetchTopSoldProducts, getProductDiscount, isProductDiscounted, type TopSoldProduct } from "@/lib/api"
 
 const formatSales = (sales: number) =>
   new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(sales)
@@ -57,6 +57,7 @@ export function TopSoldNodes() {
           {products.map((product) => {
             const size = 112 + Math.round((product.sales / maxSales) * 72)
             const href = product.product?._id ? `/productos/${product.product._id}` : "/productos"
+            const hasDiscount = isProductDiscounted(product.product)
 
             return (
               <Link
@@ -89,6 +90,11 @@ export function TopSoldNodes() {
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                       <Medal className="h-8 w-8" />
                     </div>
+                  )}
+                  {hasDiscount && (
+                    <span className="absolute right-2 top-2 rounded-full bg-accent px-2 py-1 text-xs font-semibold text-accent-foreground">
+                      -{getProductDiscount(product.product)}%
+                    </span>
                   )}
                 </div>
 

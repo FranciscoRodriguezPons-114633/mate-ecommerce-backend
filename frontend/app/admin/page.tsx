@@ -22,6 +22,7 @@ import {
   CheckCircle,
   XCircle,
   CreditCard,
+  BadgePercent,
 } from "lucide-react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
@@ -93,6 +94,12 @@ export default function AdminPage() {
     })
 
   const totalVentas = orders.reduce((sum, o) => sum + o.total, 0)
+  const discountedProducts = products.filter((p) => Number(p.discountPercentage || 0) > 0)
+
+  const getDiscountedPrice = (product: ApiProduct) => {
+    const discount = Math.min(Math.max(Number(product.discountPercentage || 0), 0), 90)
+    return discount > 0 ? Math.round(product.price * (1 - discount / 100)) : product.price
+  }
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -284,7 +291,7 @@ export default function AdminPage() {
                 { label: "Ventas Totales", value: formatPrice(totalVentas), icon: DollarSign },
                 { label: "Pedidos", value: orders.length, icon: ShoppingCart },
                 { label: "Productos", value: products.length, icon: Package },
-                { label: "Pendientes", value: orders.filter(o => o.status === "pending").length, icon: Clock },
+                { label: "Con descuento", value: discountedProducts.length, icon: BadgePercent },
               ].map((stat) => (
                 <div key={stat.label} className="bg-card border border-border rounded-xl p-6">
                   <div className="p-2 rounded-lg bg-primary/10 w-fit mb-4">
@@ -374,13 +381,14 @@ export default function AdminPage() {
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Producto</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Categoría</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Precio</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Descuento</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Stock</th>
                       <th className="text-right p-4 text-sm font-medium text-muted-foreground">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoadingData ? (
-                      <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Cargando...</td></tr>
+                      <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Cargando...</td></tr>
                     ) : (
                       filteredProducts.map((product) => (
                         <tr key={product._id} className="border-b border-border last:border-0 hover:bg-secondary/30">
@@ -393,7 +401,24 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="p-4 text-sm text-muted-foreground">{product.category}</td>
-                          <td className="p-4 font-medium text-foreground">{formatPrice(product.price)}</td>
+                          <td className="p-4">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{formatPrice(getDiscountedPrice(product))}</span>
+                              {Number(product.discountPercentage || 0) > 0 && (
+                                <span className="text-xs text-muted-foreground line-through">{formatPrice(product.price)}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {Number(product.discountPercentage || 0) > 0 ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
+                                <BadgePercent className="h-3.5 w-3.5" />
+                                {product.discountPercentage}% OFF
+                              </span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Sin descuento</span>
+                            )}
+                          </td>
                           <td className="p-4">
                             <span className={`text-sm font-medium ${
                               product.quantity > 10 ? "text-green-600"
@@ -511,6 +536,7 @@ function ProductModal({
     name: product?.name || "",
     description: product?.description || "",
     price: product?.price || 0,
+    discountPercentage: product?.discountPercentage || 0,
     quantity: product?.quantity || 0,
     category: product?.category || "Calabazas",
     image: product?.image || "/product-mate-1.jpg",
@@ -518,7 +544,10 @@ function ProductModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    onSave({
+      ...formData,
+      discountPercentage: Math.min(Math.max(Number(formData.discountPercentage || 0), 0), 90),
+    })
   }
 
   return (
@@ -572,6 +601,47 @@ function ProductModal({
                 className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-secondary/30 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <label className="block text-sm font-medium text-foreground">Descuento</label>
+                <p className="text-xs text-muted-foreground">Se muestra como oferta en la tienda.</p>
+              </div>
+              <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
+                {formData.discountPercentage}% OFF
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={90}
+              step={5}
+              value={formData.discountPercentage}
+              onChange={(e) => setFormData({ ...formData, discountPercentage: Number(e.target.value) })}
+              className="w-full accent-primary"
+            />
+            <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1.2fr]">
+              <input
+                type="number"
+                min={0}
+                max={90}
+                value={formData.discountPercentage}
+                onChange={(e) => setFormData({ ...formData, discountPercentage: Number(e.target.value) })}
+                className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <div className="rounded-lg border border-border bg-background px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Precio final: </span>
+                <span className="font-semibold text-foreground">
+                  {new Intl.NumberFormat("es-AR", {
+                    style: "currency",
+                    currency: "ARS",
+                    minimumFractionDigits: 0,
+                  }).format(Math.round(formData.price * (1 - Math.min(Math.max(formData.discountPercentage, 0), 90) / 100)))}
+                </span>
+              </div>
             </div>
           </div>
 

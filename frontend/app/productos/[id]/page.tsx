@@ -19,7 +19,15 @@ import {
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/context/cart-context"
-import { fetchProductById, fetchProducts, trackProductView, ApiProduct } from "@/lib/api"
+import {
+  fetchProductById,
+  fetchProducts,
+  trackProductView,
+  ApiProduct,
+  getProductDiscount,
+  getProductFinalPrice,
+  isProductDiscounted,
+} from "@/lib/api"
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -98,6 +106,9 @@ export default function ProductDetailPage() {
   }
 
   const galleryImages = [product.image, product.image, product.image, product.image]
+  const discount = getProductDiscount(product)
+  const finalPrice = getProductFinalPrice(product)
+  const hasDiscount = isProductDiscounted(product)
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta
@@ -111,7 +122,7 @@ export default function ProductDetailPage() {
       addToCart({
         id: product._id,
         name: product.name,
-        price: product.price,
+        price: finalPrice,
         image: product.image,
       })
     }
@@ -185,6 +196,13 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
 
+            {hasDiscount && (
+              <div className="mt-4 flex w-fit items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-sm">
+                {discount}% OFF
+                <span className="text-xs font-medium opacity-90">Oferta especial</span>
+              </div>
+            )}
+
             <div className="mt-4 flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
                 <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
@@ -192,9 +210,16 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="mt-6">
-              <span className="text-4xl font-bold text-foreground">
-                {formatPrice(product.price)}
-              </span>
+              <div className="flex flex-wrap items-end gap-3">
+                <span className="text-4xl font-bold text-foreground">
+                  {formatPrice(finalPrice)}
+                </span>
+                {hasDiscount && (
+                  <span className="pb-1 text-lg text-muted-foreground line-through">
+                    {formatPrice(product.price)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="mt-6 text-base leading-relaxed text-muted-foreground">
@@ -317,11 +342,21 @@ export default function ProductDetailPage() {
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                       />
+                      {isProductDiscounted(p) && (
+                        <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground shadow-sm">
+                          -{getProductDiscount(p)}%
+                        </span>
+                      )}
                     </div>
                     <div className="p-4">
                       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{p.category}</p>
                       <h3 className="mt-1 font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">{p.name}</h3>
-                      <p className="mt-2 text-lg font-bold text-foreground">{formatPrice(p.price)}</p>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <p className="text-lg font-bold text-foreground">{formatPrice(getProductFinalPrice(p))}</p>
+                        {isProductDiscounted(p) && (
+                          <p className="text-sm text-muted-foreground line-through">{formatPrice(p.price)}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Link>

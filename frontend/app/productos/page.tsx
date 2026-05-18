@@ -5,7 +5,13 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/product-card"
 import { Search, SlidersHorizontal, X } from "lucide-react"
-import { ApiProduct, fetchProducts } from "@/lib/api"
+import {
+  ApiProduct,
+  fetchProducts,
+  getProductDiscount,
+  getProductFinalPrice,
+  isProductDiscounted,
+} from "@/lib/api"
 
 const categories = [
   { id: "calabazas", name: "Calabazas" },
@@ -55,10 +61,10 @@ export default function ProductosPage() {
     // Ordenar
     switch (sortBy) {
       case "price-low":
-        result.sort((a, b) => a.price - b.price)
+        result.sort((a, b) => getProductFinalPrice(a) - getProductFinalPrice(b))
         break
       case "price-high":
-        result.sort((a, b) => b.price - a.price)
+        result.sort((a, b) => getProductFinalPrice(b) - getProductFinalPrice(a))
         break
       case "rating":
         result.sort((a, b) => (b.rating || 0) - (a.rating || 0))
@@ -198,13 +204,14 @@ export default function ProductosPage() {
                         key={product._id}
                         id={product._id}
                         name={product.name}
-                        price={product.price}
-                        originalPrice={product.originalPrice}
+                        price={getProductFinalPrice(product)}
+                        originalPrice={isProductDiscounted(product) ? product.price : product.originalPrice}
+                        discountPercentage={getProductDiscount(product)}
                         image={product.image}
                         category={product.category}
                         rating={product.rating}
                         isNew={product.isNew}
-                        isOnSale={product.isOnSale}
+                        isOnSale={isProductDiscounted(product) || product.isOnSale}
                         priority={index === 0}
                       />
                     ))}

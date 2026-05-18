@@ -10,6 +10,7 @@ interface ProductCardProps {
   name: string
   price: number
   originalPrice?: number
+  discountPercentage?: number
   image: string
   category: string
   rating?: number
@@ -23,6 +24,7 @@ export function ProductCard({
   name,
   price,
   originalPrice,
+  discountPercentage,
   image,
   category,
   rating = 5,
@@ -62,8 +64,8 @@ export function ProductCard({
             </span>
           )}
           {isOnSale && (
-            <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-              Oferta
+            <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground shadow-sm">
+              {discountPercentage ? `-${discountPercentage}%` : "Oferta"}
             </span>
           )}
         </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ShoppingCart, Menu, X, User, LogOut, Settings, Package, Sparkles } from "lucide-react"
+import { ShoppingCart, Menu, X, User, LogOut, Settings, Package, Sparkles, Map } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 import { useCart } from "@/context/cart-context"
 import { CartDrawer } from "./cart-drawer"
@@ -11,6 +11,7 @@ const navigation = [
   { name: "Inicio", href: "/" },
   { name: "Productos", href: "/productos" },
   { name: "Recomendaciones", href: "/recomendaciones" },
+  { name: "Mi recorrido", href: "/mi-recorrido" },
   { name: "Nosotros", href: "/nosotros" },
   { name: "Contacto", href: "/contacto" },
 ]
@@ -102,6 +103,15 @@ export function Header() {
                       >
                         <Sparkles className="h-4 w-4" />
                         Recomendaciones
+                      </Link>
+
+                      <Link
+                        href="/mi-recorrido"
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Map className="h-4 w-4" />
+                        Mi recorrido
                       </Link>
 
                       {isAdmin && (

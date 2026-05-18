@@ -4,7 +4,13 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Eye } from "lucide-react"
-import { fetchTopViewedProducts, type TopViewedProduct } from "@/lib/api"
+import {
+  fetchTopViewedProducts,
+  getProductDiscount,
+  getProductFinalPrice,
+  isProductDiscounted,
+  type TopViewedProduct,
+} from "@/lib/api"
 
 const formatViews = (views: number) =>
   new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(views)
@@ -71,6 +77,7 @@ export function TopViewedProducts() {
             const href = product?._id ? `/productos/${product._id}` : "/productos"
             const name = product?.name || item.name || "Producto"
             const image = product?.image || item.image || "/placeholder.jpg"
+            const hasDiscount = isProductDiscounted(product)
 
             return (
               <Link key={item.product_id} href={href} className="group block">
@@ -86,6 +93,11 @@ export function TopViewedProducts() {
                       <Eye className="h-3.5 w-3.5" />
                       {formatViews(item.views)}
                     </div>
+                    {hasDiscount && (
+                      <div className="absolute right-3 top-3 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground shadow-sm">
+                        -{getProductDiscount(product)}%
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4">
@@ -96,9 +108,16 @@ export function TopViewedProducts() {
                       {name}
                     </h3>
                     {product?.price && (
-                      <p className="mt-3 text-lg font-bold text-foreground">
-                        {formatPrice(product.price)}
-                      </p>
+                      <div className="mt-3 flex items-baseline gap-2">
+                        <p className="text-lg font-bold text-foreground">
+                          {formatPrice(getProductFinalPrice(product))}
+                        </p>
+                        {hasDiscount && (
+                          <p className="text-sm text-muted-foreground line-through">
+                            {formatPrice(product.price)}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
