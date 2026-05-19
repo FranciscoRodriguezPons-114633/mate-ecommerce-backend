@@ -1,56 +1,123 @@
-# Implementaciones realizadas - Mate Ecommerce Backend
+# Implementacion de Cassandra y Neo4j
 
-Proyecto: `mate-ecommerce-backend`  
-Contexto: TPG2 - Bases de Datos II - UTN FRC  
-Stack base: Node.js/Express, MongoDB/Mongoose, Redis, Cassandra, Neo4j y frontend Next.js.
-
-Este documento resume los cambios realizados durante la integracion de Cassandra, Redis, Neo4j, recomendaciones, analytics, carrito persistido, kit matero, descuentos administrativos, recorrido del cliente, mapas visuales interactivos y setup inicial del proyecto.
-
----
-
-## 1. Resumen general
-
-Se mantuvo MongoDB como base principal y fuente de verdad del ecommerce. Sobre esa base se agregaron bases especializadas:
-
-- MongoDB: productos, usuarios, pedidos, stock y persistencia principal.
-- Redis: cache para rankings/analytics y mejora de performance.
-- Cassandra: pedidos desnormalizados, carrito con TTL, vistas de productos y ventas con counters.
-- Neo4j: motor conceptual de recomendaciones, recorrido del cliente y kit matero, con fallback a MongoDB si Neo4j no esta disponible.
-- Frontend: nuevas paginas, componentes visuales, descuentos, mapas SVG interactivos y secciones de recomendacion basadas en datos reales del backend.
-
-La aplicacion sigue funcionando aunque Cassandra o Neo4j no esten levantados. En esos casos se usan fallbacks controlados para no romper el flujo principal. El indicador tecnico `Modo respaldo` se removio de la UI final porque confundia al usuario.
+Proyecto: `mate-ecommerce-backend`
+Materia: Bases de Datos II - UTN FRC
+Dominio: e-commerce de productos materos
+Stack base: Node.js, Express, MongoDB, Redis, Cassandra, Neo4j y Next.js
 
 ---
 
-## 2. Dependencias agregadas
+## 1. Proposito de la implementacion
 
-En `backend/package.json` se agregaron:
+El proyecto parte de un e-commerce funcional con MongoDB como base principal. Sobre esa base se incorporaron dos bases NoSQL especializadas:
+
+- **Cassandra**, para resolver consultas de alto volumen, escrituras rapidas, datos desnormalizados, counters, TTL y analitica de productos.
+- **Neo4j**, para modelar relaciones entre usuarios, pedidos, productos y categorias, permitiendo recomendaciones, recorridos y visualizaciones basadas en grafo.
+
+MongoDB sigue siendo la **fuente de verdad** del sistema: productos, usuarios, pedidos, stock, autenticacion y datos transaccionales principales viven ahi. Cassandra y Neo4j no reemplazan MongoDB; lo complementan para resolver problemas donde una base documental no es la herramienta mas expresiva o eficiente.
+
+La arquitectura final queda asi:
+
+```text
+Frontend Next.js
+       |
+       v
+Backend Express
+       |
+       |-- MongoDB: fuente de verdad
+       |-- Redis: cache de consultas frecuentes
+       |-- Cassandra: pedidos, carrito, counters y analytics
+       |-- Neo4j: recomendaciones, journey, kit y exploracion relacional
+```
+
+Tambien se implementaron fallbacks para que la aplicacion no se rompa si Cassandra o Neo4j no estan disponibles.
+
+---
+
+## 2. Por que Cassandra
+
+Cassandra fue incorporada porque el proyecto necesita cubrir escenarios donde conviene leer y escribir datos previamente modelados segun la consulta.
+
+En un e-commerce, hay operaciones que pueden crecer mucho:
+
+- listar pedidos de un usuario;
+- listar pedidos por estado para administracion;
+- guardar carritos temporales;
+- contar vistas de productos;
+- contar ventas de productos;
+- generar rankings de productos vistos o vendidos.
+
+Estas operaciones encajan bien con Cassandra porque:
+
+- permite **tablas desnormalizadas orientadas a consulta**;
+- escala bien en escrituras;
+- soporta **TTL** por fila para datos temporales;
+- soporta **counter columns** para acumuladores;
+- permite usar **BATCH** para escribir la misma entidad en varias tablas;
+- evita joins, favoreciendo lecturas directas por partition key.
+
+### Beneficios concretos en el proyecto
+
+| Necesidad | Solucion con Cassandra |
+| --- | --- |
+| Consultar pedidos por usuario | Tabla `orders_by_user` |
+| Consultar pedidos por estado | Tabla `orders_by_status` |
+| Obtener items de un pedido | Tabla `order_items` |
+| Persistir carrito temporal | Tabla `carts` con TTL |
+| Contar vistas de productos | Counter table `product_views` |
+| Contar ventas de productos | Counter table `product_sales` |
+| Escribir pedido en varias vistas | `client.batch()` |
+
+---
+
+## 3. Por que Neo4j
+
+Neo4j fue incorporado porque varias funcionalidades nuevas no dependen solo de documentos aislados, sino de **relaciones**:
+
+- que compro un usuario;
+- que productos aparecen juntos;
+- que categorias exploro;
+- que productos complementan otros productos;
+- que usuarios tienen comportamientos similares;
+- que camino existe entre productos relacionados.
+
+En MongoDB estas consultas requeririan multiples queries y cruces manuales en memoria. En Neo4j, esas relaciones se expresan naturalmente con patrones `MATCH`.
+
+### Beneficios concretos en el proyecto
+
+| Necesidad | Solucion con Neo4j |
+| --- | --- |
+| Recomendaciones colaborativas | Traversal usuario-producto-usuario-producto |
+| Productos complementarios | Relacion `COMPLEMENTA` |
+| Journey del cliente | Recorrido usuario-pedido-producto-categoria |
+| Armador de kit | Categorias compradas vs categorias faltantes |
+| Compras frecuentes juntas | Pares de productos contenidos en pedidos |
+| Categorias exploradas y pendientes | Traversal sobre categorias compradas |
+| Visualizaciones relacionales | Mapas SVG basados en datos del grafo |
+
+---
+
+## 4. Dependencias y configuracion
+
+### Dependencias agregadas
+
+Archivo: `backend/package.json`
 
 ```json
 "cassandra-driver": "^4.9.0",
 "neo4j-driver": "^6.0.1"
 ```
 
-Tambien se agregaron scripts:
+Scripts relevantes:
 
 ```json
 "seed:cassandra": "node src/seed.cassandra.js",
 "seed:extras": "node src/seed.extra-products.js"
 ```
 
-Uso:
+### Variables de entorno
 
-```bash
-cd backend
-npm run seed:cassandra
-npm run seed:extras
-```
-
----
-
-## 3. Variables de entorno
-
-Se documentaron variables para Cassandra y Neo4j.
+Archivo: `backend/.env`
 
 ```env
 # Cassandra Configuration
@@ -64,71 +131,86 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=password
 ```
 
-Tambien se creo una guia completa de setup para nuevos integrantes:
-
-- `SETUP_INICIAL.md`
-
-Incluye dependencias, variables de entorno, Docker, seeds, comandos de arranque y solucion de problemas frecuentes.
+Estas variables tambien quedaron documentadas en `backend/.env.example`.
 
 ---
 
-## 4. Conexion de servicios en Express
+## 5. Integracion en Express
 
 Archivo principal:
 
 - `backend/src/app.js`
 
-Se agregaron conexiones no bloqueantes:
-
-- `connectRedis()`
-- `connectCassandra()`
-- `connectNeo4j()`
-
-Si Redis, Cassandra o Neo4j fallan, la app continua funcionando.
-
-Rutas nuevas montadas:
+Se agregaron conexiones a Cassandra y Neo4j junto con las conexiones ya existentes a MongoDB y Redis.
 
 ```js
-app.use("/api/recommendations", recommendationRoutes);
-app.use("/api/customer-journey", customerJourneyRoutes);
-app.use("/api/kit-builder", kitBuilderRoutes);
+const { connectCassandra } = require("./config/cassandra");
+const { connectNeo4j } = require("./config/neo4j");
 ```
+
+La conexion se hace de forma no bloqueante:
+
+```js
+connectCassandra().catch((err) => {
+  console.error("Failed to connect to Cassandra, continuing without it:", err);
+});
+
+connectNeo4j().catch((err) => {
+  console.error("Failed to connect to Neo4j, using recommendation fallback:", err.message);
+});
+```
+
+Decision tecnica:
+
+- MongoDB sigue siendo obligatorio.
+- Cassandra y Neo4j son servicios especializados.
+- Si fallan, la aplicacion sigue respondiendo usando MongoDB como respaldo.
 
 ---
 
-## 5. Cassandra
+# Parte I - Cassandra
 
-### 5.1 Archivos creados
+---
+
+## 6. Conexion Cassandra
+
+Archivo:
 
 - `backend/src/config/cassandra.js`
-- `backend/src/config/cassandra.schema.cql`
-- `backend/src/services/order.cassandra.service.js`
-- `backend/src/services/cart.service.js`
-- `backend/src/services/analytics.service.js`
-- `backend/src/services/sales.analytics.service.js`
-- `backend/src/controllers/cart.controller.js`
-- `backend/src/controllers/analytics.controller.js`
-- `backend/src/seed.cassandra.js`
-
-### 5.2 Conexion
-
-Archivo: `backend/src/config/cassandra.js`
 
 Implementa:
 
-- Cliente singleton.
-- `connectCassandra()`.
-- `isCassandraAvailable()`.
-- Retry policy del driver.
-- Timeout de conexion.
+- cliente singleton;
+- `connectCassandra()`;
+- `isCassandraAvailable()`;
+- timeout de conexion;
+- retry policy del driver.
 
-La app no muere si Cassandra no esta disponible.
+Resumen:
 
-### 5.3 Schema Cassandra
+```js
+const client = new cassandra.Client({
+  contactPoints: [process.env.CASSANDRA_HOST || "127.0.0.1"],
+  localDataCenter: process.env.CASSANDRA_DATACENTER || "datacenter1",
+  keyspace: process.env.CASSANDRA_KEYSPACE || "mate_ecommerce",
+  socketOptions: { connectTimeout: 5000 },
+  policies: {
+    retry: new cassandra.policies.retry.RetryPolicy(),
+  },
+});
+```
 
-Archivo: `backend/src/config/cassandra.schema.cql`
+La funcion `isCassandraAvailable()` permite que los servicios sepan si deben consultar Cassandra o usar fallback.
 
-Tablas creadas:
+---
+
+## 7. Modelo Cassandra
+
+Archivo:
+
+- `backend/src/config/cassandra.schema.cql`
+
+Tablas implementadas:
 
 1. `orders_by_user`
 2. `orders_by_status`
@@ -137,59 +219,95 @@ Tablas creadas:
 5. `product_views`
 6. `product_sales`
 
-### 5.4 Tablas desnormalizadas
+La decision principal fue modelar las tablas segun consultas reales del sistema. En Cassandra no se diseña pensando en normalizacion, sino en los patrones de lectura.
 
-#### `orders_by_user`
+---
 
-Uso: obtener los pedidos de un usuario.
+## 8. Tabla `orders_by_user`
+
+Uso:
+
+- listar pedidos de un usuario autenticado.
+
+Schema:
 
 ```cql
 CREATE TABLE IF NOT EXISTS orders_by_user (
-  user_id     text,
-  created_at  timestamp,
-  order_id    uuid,
+  user_id        text,
+  created_at     timestamp,
+  order_id       uuid,
   mongo_order_id text,
-  status      text,
-  total       decimal,
-  items       list<frozen<map<text, text>>>,
+  status         text,
+  total          decimal,
+  items          list<frozen<map<text, text>>>,
   PRIMARY KEY (user_id, created_at)
 ) WITH CLUSTERING ORDER BY (created_at DESC);
 ```
 
-Justificacion:
+### Justificacion
 
-- Partition key: `user_id`.
-- Clustering column: `created_at`.
-- Permite listar pedidos de un cliente ordenados del mas reciente al mas antiguo.
-- Se uso `text` para `user_id` porque el usuario viene de MongoDB como ObjectId, no como UUID.
+- **Partition key:** `user_id`.
+- **Clustering column:** `created_at`.
+- Todos los pedidos de un usuario quedan agrupados en la misma particion.
+- Los pedidos se ordenan del mas nuevo al mas viejo.
+- `user_id` es `text` porque en MongoDB el usuario es un `ObjectId`, no un UUID.
 
-#### `orders_by_status`
+### Consulta principal
 
-Uso: vista administrativa por estado.
+```cql
+SELECT order_id, mongo_order_id, created_at, status, total, items
+FROM orders_by_user
+WHERE user_id = ?;
+```
+
+---
+
+## 9. Tabla `orders_by_status`
+
+Uso:
+
+- vista administrativa de pedidos por estado.
+
+Schema:
 
 ```cql
 CREATE TABLE IF NOT EXISTS orders_by_status (
-  status      text,
-  created_at  timestamp,
-  order_id    uuid,
+  status         text,
+  created_at     timestamp,
+  order_id       uuid,
   mongo_order_id text,
-  user_id     text,
-  user_name   text,
-  user_email  text,
-  total       decimal,
+  user_id        text,
+  user_name      text,
+  user_email     text,
+  total          decimal,
   PRIMARY KEY (status, created_at)
 ) WITH CLUSTERING ORDER BY (created_at DESC);
 ```
 
-Justificacion:
+### Justificacion
 
-- Partition key: `status`.
-- Clustering column: `created_at`.
-- Permite consultar pedidos agrupados por estado sin hacer filtros costosos.
+- **Partition key:** `status`.
+- **Clustering column:** `created_at`.
+- Permite consultar rapidamente pedidos `pending`, `paid`, `shipped`, `delivered` o `cancelled`.
+- Es una tabla desnormalizada: repite datos de usuario para evitar joins.
 
-#### `order_items`
+### Consulta principal
 
-Uso: items de un pedido.
+```cql
+SELECT order_id, mongo_order_id, created_at, status, user_id, user_name, user_email, total
+FROM orders_by_status
+WHERE status = ?;
+```
+
+---
+
+## 10. Tabla `order_items`
+
+Uso:
+
+- consultar los items de un pedido.
+
+Schema:
 
 ```cql
 CREATE TABLE IF NOT EXISTS order_items (
@@ -204,15 +322,29 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 ```
 
-Justificacion:
+### Justificacion
 
-- Partition key: `order_id`.
-- Clustering key: `product_id`.
-- Todos los items de un pedido quedan juntos.
+- **Partition key:** `order_id`.
+- **Clustering key:** `product_id`.
+- Todos los productos de un pedido quedan juntos.
 
-#### `carts`
+### Consulta principal
 
-Uso: carrito persistido con expiracion.
+```cql
+SELECT product_id, name, price, quantity, subtotal, image
+FROM order_items
+WHERE order_id = ?;
+```
+
+---
+
+## 11. Tabla `carts`
+
+Uso:
+
+- persistir carritos temporales por usuario.
+
+Schema:
 
 ```cql
 CREATE TABLE IF NOT EXISTS carts (
@@ -222,7 +354,13 @@ CREATE TABLE IF NOT EXISTS carts (
 );
 ```
 
-TTL usado en el `INSERT`:
+### Conceptos aplicados
+
+- **TTL:** el carrito expira automaticamente.
+- **Coleccion:** `items` usa `list<frozen<map<text, text>>>`.
+- **Partition key:** `user_id`.
+
+### Guardado con TTL
 
 ```cql
 INSERT INTO carts (user_id, items, updated_at)
@@ -230,15 +368,28 @@ VALUES (?, ?, ?)
 USING TTL 604800;
 ```
 
-Justificacion:
+`604800` segundos equivale a 7 dias.
 
-- Un carrito por usuario.
-- TTL de 7 dias.
-- Coleccion Cassandra: `list<frozen<map<text, text>>>`.
+### Consultas
 
-#### `product_views`
+```cql
+SELECT items, updated_at
+FROM carts
+WHERE user_id = ?;
+```
 
-Uso: contador de vistas.
+```cql
+DELETE FROM carts
+WHERE user_id = ?;
+```
+
+---
+
+## 12. Tablas counter
+
+Cassandra tiene un tipo especial de columna para contadores. Se uso para vistas y ventas.
+
+### `product_views`
 
 ```cql
 CREATE TABLE IF NOT EXISTS product_views (
@@ -247,9 +398,33 @@ CREATE TABLE IF NOT EXISTS product_views (
 );
 ```
 
-#### `product_sales`
+Incremento:
 
-Uso: contador de ventas.
+```cql
+UPDATE product_views
+SET views = views + 1
+WHERE product_id = ?;
+```
+
+Lectura:
+
+```cql
+SELECT views
+FROM product_views
+WHERE product_id = ?;
+```
+
+Ranking:
+
+```cql
+SELECT product_id, views
+FROM product_views
+LIMIT ?;
+```
+
+Luego se ordena en memoria por `views DESC`.
+
+### `product_sales`
 
 ```cql
 CREATE TABLE IF NOT EXISTS product_sales (
@@ -258,11 +433,47 @@ CREATE TABLE IF NOT EXISTS product_sales (
 );
 ```
 
-### 5.5 Consultas CQL implementadas
+Incremento:
 
-#### Crear pedido en batch
+```cql
+UPDATE product_sales
+SET sales = sales + ?
+WHERE product_id = ?;
+```
 
-Servicio: `createOrderInCassandra()`
+Lectura:
+
+```cql
+SELECT sales
+FROM product_sales
+WHERE product_id = ?;
+```
+
+Ranking:
+
+```cql
+SELECT product_id, sales
+FROM product_sales
+LIMIT ?;
+```
+
+Luego se ordena en memoria por `sales DESC`.
+
+---
+
+## 13. Escritura de pedidos con BATCH
+
+Servicio:
+
+- `backend/src/services/order.cassandra.service.js`
+
+Funcion:
+
+- `createOrderInCassandra()`
+
+Cuando se crea un pedido, Cassandra recibe una escritura desnormalizada en varias tablas.
+
+Queries:
 
 ```cql
 INSERT INTO orders_by_user
@@ -282,44 +493,36 @@ INSERT INTO order_items
 VALUES (?, ?, ?, ?, ?, ?, ?);
 ```
 
-Las queries se ejecutan con:
+Ejecucion:
 
 ```js
 client.batch(queries, { prepare: true });
 ```
 
-#### Obtener pedidos por usuario
+### Beneficio
 
-```cql
-SELECT order_id, mongo_order_id, created_at, status, total, items
-FROM orders_by_user
-WHERE user_id = ?;
-```
+Un mismo pedido queda preparado para multiples consultas:
 
-#### Obtener pedidos por estado
+- por usuario;
+- por estado;
+- por items.
 
-```cql
-SELECT order_id, mongo_order_id, created_at, status, user_id, user_name, user_email, total
-FROM orders_by_status
-WHERE status = ?;
-```
+Esta duplicacion es intencional y responde al modelo de Cassandra.
 
-#### Obtener items de un pedido
+---
 
-```cql
-SELECT product_id, name, price, quantity, subtotal, image
-FROM order_items
-WHERE order_id = ?;
-```
+## 14. Actualizacion de estado en Cassandra
 
-#### Actualizar estado de pedido
+Cassandra no permite actualizar eficientemente una fila si no se tiene la partition key adecuada. Para cambiar un pedido de estado se implemento una estrategia de mover fila entre particiones.
 
-Cassandra no permite actualizar eficientemente una fila por columnas que no sean parte de la partition key. Por eso se implemento:
+Proceso:
 
-1. `SELECT` por `status` y `created_at`.
-2. `DELETE` de la fila vieja en `orders_by_status`.
-3. `UPDATE` de `orders_by_user`.
-4. `INSERT` de la fila nueva en `orders_by_status`.
+1. Buscar la fila anterior en `orders_by_status`.
+2. Borrar la fila del estado viejo.
+3. Actualizar estado en `orders_by_user`.
+4. Insertar la fila en el nuevo estado.
+
+Consultas:
 
 ```cql
 SELECT order_id, mongo_order_id, created_at, user_id, user_name, user_email, total
@@ -344,239 +547,122 @@ INSERT INTO orders_by_status
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 ```
 
-#### Obtener todos los estados
-
-Se ejecutan 5 consultas paralelas:
-
-```js
-Promise.all(STATUSES.map((status) => getOrdersByStatus(status)));
-```
-
-Estados:
-
-```js
-["pending", "paid", "shipped", "delivered", "cancelled"]
-```
-
-#### Guardar carrito con TTL
-
-```cql
-INSERT INTO carts (user_id, items, updated_at)
-VALUES (?, ?, ?)
-USING TTL 604800;
-```
-
-#### Obtener carrito
-
-```cql
-SELECT items, updated_at
-FROM carts
-WHERE user_id = ?;
-```
-
-#### Limpiar carrito
-
-```cql
-DELETE FROM carts
-WHERE user_id = ?;
-```
-
-#### Incrementar vistas
-
-```cql
-UPDATE product_views
-SET views = views + 1
-WHERE product_id = ?;
-```
-
-#### Obtener vistas de producto
-
-```cql
-SELECT views
-FROM product_views
-WHERE product_id = ?;
-```
-
-#### Top productos vistos
-
-```cql
-SELECT product_id, views
-FROM product_views
-LIMIT ?;
-```
-
-Luego se ordena en memoria por `views DESC`.
-
-#### Incrementar ventas
-
-```cql
-UPDATE product_sales
-SET sales = sales + ?
-WHERE product_id = ?;
-```
-
-#### Obtener ventas de producto
-
-```cql
-SELECT sales
-FROM product_sales
-WHERE product_id = ?;
-```
-
-#### Top productos vendidos
-
-```cql
-SELECT product_id, sales
-FROM product_sales
-LIMIT ?;
-```
-
-Luego se ordena en memoria por `sales DESC`.
-
-### 5.6 Integracion con pedidos
-
-Archivo: `backend/src/controllers/order.controller.js`
-
-Flujo de creacion:
-
-1. Crea pedido en MongoDB.
-2. Registra pedido en Cassandra.
-3. Incrementa ventas en Cassandra.
-4. Limpia cache Redis de top vendidos.
-5. Si Cassandra falla, la request no falla.
-
-Flujo de lectura:
-
-1. Intenta leer desde Cassandra.
-2. Si Cassandra falla o no devuelve resultados, usa MongoDB.
-
 ---
 
-## 6. Redis
+## 15. Integracion de Cassandra en la aplicacion
 
-Redis ya existia y se uso para cachear analytics.
+Archivos principales:
 
-Casos principales:
-
-- Cache de productos mas vistos.
-- Cache de productos mas vendidos.
-- Invalidacion de cache cuando se registra una venta.
-
-Ejemplo de invalidacion:
-
-```js
-const cacheKeys = await redisClient.keys("analytics:top-sold-products:*");
-if (cacheKeys.length) {
-  await redisClient.del(cacheKeys);
-}
-```
-
-Si Redis no esta disponible, la aplicacion continua sin cache.
-
----
-
-## 7. Analytics de productos
-
-Archivos:
-
+- `backend/src/config/cassandra.js`
+- `backend/src/config/cassandra.schema.cql`
+- `backend/src/seed.cassandra.js`
+- `backend/src/services/order.cassandra.service.js`
+- `backend/src/services/cart.service.js`
 - `backend/src/services/analytics.service.js`
 - `backend/src/services/sales.analytics.service.js`
-- `backend/src/controllers/analytics.controller.js`
-- `backend/src/routes/product.routes.js`
-
-Rutas:
-
-```http
-POST /api/products/:id/view
-GET  /api/products/analytics/top
-GET  /api/products/analytics/top-sold
-```
-
-Funcionalidades:
-
-- Registrar vista de producto en Cassandra.
-- Obtener productos mas vistos.
-- Registrar ventas por producto al crear pedidos.
-- Obtener productos mas vendidos.
-- Enriquecer respuestas con datos de MongoDB: nombre, imagen, precio, categoria.
-
----
-
-## 8. Carrito persistido
-
-Archivos:
-
-- `backend/src/services/cart.service.js`
 - `backend/src/controllers/cart.controller.js`
-- `backend/src/routes/order.routes.js`
+- `backend/src/controllers/analytics.controller.js`
 
-Rutas:
+Flujo de pedidos:
+
+1. MongoDB crea el pedido y actualiza stock.
+2. Cassandra guarda las vistas desnormalizadas.
+3. Cassandra incrementa counters de ventas.
+4. Redis invalida rankings cacheados.
+5. Si Cassandra falla, el pedido no se pierde porque MongoDB es la fuente de verdad.
+
+Rutas relacionadas:
 
 ```http
+POST   /api/orders
+GET    /api/orders/mine
+GET    /api/orders
+PUT    /api/orders/:id/status
 GET    /api/orders/cart
 POST   /api/orders/cart
 DELETE /api/orders/cart
+POST   /api/products/:id/view
+GET    /api/products/analytics/top
+GET    /api/products/analytics/top-sold
 ```
-
-Caracteristicas:
-
-- Carrito por usuario autenticado.
-- Persistencia en Cassandra.
-- TTL de 7 dias.
-- Fallback silencioso si Cassandra no esta disponible.
-- En frontend se mantiene compatibilidad con carrito local.
 
 ---
 
-## 9. Neo4j
+# Parte II - Neo4j
 
-### 9.1 Archivos creados
+---
+
+## 16. Conexion Neo4j
+
+Archivo:
 
 - `backend/src/config/neo4j.js`
-- `backend/src/config/neo4j.seed.cypher`
-- `backend/src/services/recommendation.service.js`
-- `backend/src/services/customerJourney.service.js`
-- `backend/src/services/kitBuilder.service.js`
-- `backend/src/controllers/recommendation.controller.js`
-- `backend/src/controllers/customerJourney.controller.js`
-- `backend/src/controllers/kitBuilder.controller.js`
-- `backend/src/routes/recommendation.routes.js`
-- `backend/src/routes/customerJourney.routes.js`
-- `backend/src/routes/kitBuilder.routes.js`
-
-### 9.2 Conexion
-
-Archivo: `backend/src/config/neo4j.js`
 
 Implementa:
 
-- Driver oficial `neo4j-driver`.
-- `connectNeo4j()`.
-- `closeNeo4j()`.
+- driver oficial `neo4j-driver`;
+- `connectNeo4j()`;
+- `closeNeo4j()`;
 - `isNeo4jAvailable()`.
 
-Si Neo4j no esta disponible, se usa fallback a MongoDB.
+Conexion:
 
-### 9.3 Modelo de grafo utilizado
+```js
+const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
+```
 
-Modelo conceptual:
+La aplicacion verifica conectividad al iniciar. Si Neo4j no responde, se activa fallback a MongoDB para recomendaciones, kit y recorrido.
+
+---
+
+## 17. Modelo de grafo
+
+Modelo conceptual usado para el TP:
 
 ```text
 (User)-[:COMPRÓ]->(Order)-[:CONTIENE {cantidad}]->(Product)-[:PERTENECE_A]->(Category)
 (Product)-[:COMPLEMENTA]->(Product)
 ```
 
-En algunos servicios tambien se contempla el modelo en ingles:
+Propiedades principales:
+
+```text
+User:    { id, nombre, email }
+Order:   { id, fecha, total, estado }
+Product: { id, nombre, imageUrl, precio, precioOriginal?, descuento? }
+Category:{ id, nombre }
+```
+
+Tambien se soporta un modelo equivalente en ingles para compatibilidad con algunos servicios:
 
 ```text
 (User)-[:PURCHASED]->(Product)-[:IN_CATEGORY]->(Category)
 ```
 
-Esto se hizo para soportar tanto las consultas propuestas del TP como el fallback implementado.
+### Por que este modelo
 
-### 9.4 Seed de relaciones COMPLEMENTA
+El grafo permite expresar preguntas del negocio como caminos:
 
-Archivo: `backend/src/config/neo4j.seed.cypher`
+- "usuarios similares a este cliente";
+- "productos que suelen comprarse juntos";
+- "productos complementarios";
+- "categorias exploradas";
+- "categorias pendientes";
+- "recorrido de compras del usuario".
+
+En una base documental esto exige multiples consultas y joins manuales. En Neo4j, el recorrido es parte natural del motor.
+
+---
+
+## 18. Relacion `COMPLEMENTA`
+
+Archivo:
+
+- `backend/src/config/neo4j.seed.cypher`
+
+Esta relacion conecta productos que se usan juntos en un set matero.
+
+Ejemplos:
 
 ```cypher
 MATCH (p1:Product), (p2:Product)
@@ -599,9 +685,16 @@ MERGE (p1)-[:COMPLEMENTA]->(p2)
 MERGE (p2)-[:COMPLEMENTA]->(p1);
 ```
 
+Beneficio:
+
+- habilita recomendaciones de productos complementarios;
+- permite construir el armador de kit;
+- permite sugerir combos;
+- permite mostrar relaciones visuales en frontend.
+
 ---
 
-## 10. Motor de recomendaciones
+## 19. Motor de recomendaciones
 
 Archivos:
 
@@ -616,7 +709,7 @@ Ruta:
 GET /api/recommendations?limit=8
 ```
 
-### 10.1 Consulta Cypher colaborativa
+### Recomendacion colaborativa
 
 ```cypher
 MATCH (me:User {id: $userId})-[:PURCHASED]->(owned:Product)
@@ -632,11 +725,11 @@ LIMIT $limit;
 
 Objetivo:
 
-- Buscar usuarios similares.
-- Recomendar productos comprados por esos usuarios.
-- Evitar recomendar productos que el usuario ya compro.
+- buscar usuarios que compraron productos parecidos;
+- descubrir productos que esos usuarios tambien compraron;
+- evitar recomendar productos ya comprados por el cliente.
 
-### 10.2 Consulta Cypher por categoria
+### Productos por categoria relacionada
 
 ```cypher
 MATCH (me:User {id: $userId})-[:PURCHASED]->(:Product)-[:IN_CATEGORY]->(category:Category)
@@ -648,11 +741,9 @@ LIMIT $limit;
 
 Objetivo:
 
-- Recomendar productos de categorias que el usuario ya consume.
+- recomendar productos de categorias cercanas al historial del usuario.
 
-### 10.3 Consulta Cypher de beneficios/descuentos
-
-Se agrego una consulta para productos con descuento activo. Se usa en la seccion `Packs y descuentos`.
+### Beneficios activos
 
 ```cypher
 MATCH (p:Product)
@@ -671,17 +762,15 @@ ORDER BY descuento DESC
 LIMIT $limit;
 ```
 
-El backend primero intenta obtener beneficios desde Neo4j y luego usa MongoDB como respaldo.
+Objetivo:
 
-### 10.4 Fix de parametros `LIMIT` en Neo4j
+- alimentar el mapa de beneficios;
+- mostrar productos con descuentos cargados desde admin;
+- combinar informacion de Neo4j con MongoDB.
 
-Neo4j exige que `LIMIT` reciba un entero. El driver estaba enviando `8.0`, provocando:
+### Detalle tecnico: `LIMIT` como entero Neo4j
 
-```txt
-LIMIT: Invalid input. '8.0' is not a valid value. Must be a non-negative integer.
-```
-
-Se corrigio con `neo4j.int()`:
+Neo4j exige un entero para `LIMIT`. El driver recibia `8.0` y fallaba. Se corrigio con:
 
 ```js
 const toNeo4jLimit = (limit, fallback = 8) => {
@@ -694,149 +783,9 @@ const toNeo4jLimit = (limit, fallback = 8) => {
 };
 ```
 
-### 10.5 Fallback MongoDB
-
-Si Neo4j no esta disponible, el servicio:
-
-1. Lee pedidos del usuario.
-2. Obtiene productos comprados y categorias.
-3. Busca pedidos de otros usuarios con productos o categorias compartidas.
-4. Calcula score por cantidad y cercania.
-5. Devuelve recomendaciones y datos auxiliares para el frontend.
-
-### 10.6 Frontend de recomendaciones
-
-Pagina:
-
-- `frontend/app/recomendaciones/page.tsx`
-
-Implementado:
-
-- Cards de productos recomendados.
-- Estadisticas del historial.
-- Seccion interactiva que reemplazo el grafo tecnico.
-- Filtros:
-  - `Tus favoritos`
-  - `Compras juntas`
-  - `Packs y descuentos`
-  - `Categorias`
-
-La visual vieja de nodos/relaciones fue removida porque era poco clara para usuario final.
-
-### 10.7 Mapas SVG interactivos
-
-Se implementaron 4 mapas visuales dentro de `/recomendaciones`, sin usar D3 ni Cytoscape. Todos usan SVG generado desde React, animaciones CSS y datos reales del backend.
-
-Estilo compartido:
-
-- Fondo externo: `#F5EDD8`.
-- Fondo interno: `#E8D9BE`.
-- Nodo central con gradiente `#D4793A -> #7A3010`.
-- Conectores punteados `#9A6030`.
-- Stats con fondo `#EDE0CC`.
-- Animaciones:
-  - `pulse-ring`
-  - `glow-center`
-  - `float-node`
-
-#### Mapa de favoritos
-
-Subtitulo:
-
-```text
-Productos que más se repiten y sugerencias cercanas para recompra.
-```
-
-Comportamiento:
-
-- Productos comprados repetidamente: badge `repite`.
-- Productos sugeridos: badge `sugiere`.
-- Nodo central con `✦` y nombre del usuario.
-- Nodos flotantes con delay escalonado.
-- Tooltip con detalle y link al producto.
-- Corazon del header clickeable: se rellena visualmente al hacer click. No persiste datos ni modifica recomendaciones.
-
-Stats:
-
-- Cantidad de favoritos.
-- Maximo de repeticiones.
-- Cantidad de sugerencias.
-
-#### Mapa de compras juntas
-
-Subtitulo:
-
-```text
-Productos que comprás juntos y combos populares entre clientes similares.
-```
-
-Comportamiento:
-
-- Pares comprados juntos: badge `juntos`.
-- Sugerencias de combo: badge `combo popular`.
-- Linea doble entre productos comprados juntos.
-- Nodo central con icono de capas.
-- Tooltip con precio y link al producto.
-
-Stats:
-
-- Pares de productos comprados juntos.
-- Combo mas repetido.
-- Sugerencias de combo nuevas.
-
-#### Mapa de beneficios
-
-Subtitulo:
-
-```text
-Productos con descuentos activos cargados desde el panel de administración.
-```
-
-Comportamiento:
-
-- Productos con descuento: badge `-X%`.
-- Nodo central `Beneficio`.
-- Descuentos mayores o iguales a 50% tienen borde mas grueso.
-- Tooltip con precio actual, precio original tachado, porcentaje de ahorro y link al producto.
-
-Stats:
-
-- Total de ofertas activas.
-- Mayor descuento activo.
-- Ofertas fuertes con descuento mayor o igual a 30%.
-
-#### Mapa de categorias
-
-Subtitulo:
-
-```text
-Categorías que exploraste y las que todavía te faltan descubrir.
-```
-
-Comportamiento:
-
-- Categorias ya compradas: nodo verde con badge de cantidad.
-- Categorias no compradas: nodo beige punteado con badge `explorar`.
-- Nodo central con icono de tag.
-- Tooltip con producto destacado y boton `Ver categoría`.
-- El tooltip se posiciona en una esquina segura del mapa para no tapar contenido.
-- Se agrego boton `x` y toggle al volver a clickear el mismo nodo.
-
-Stats:
-
-- Categorias exploradas.
-- Categoria favorita.
-- Categorias sin explorar.
-
-### 10.8 Ajustes de UX recientes
-
-- Se elimino de la UI el cartel `Modo respaldo / Datos sincronizados`.
-- El cartel era util para debug pero confundia al usuario final.
-- Se mantiene el fallback internamente.
-
 ---
 
-## 11. Recorrido del matero
+## 20. Recorrido del matero
 
 Archivos:
 
@@ -851,30 +800,33 @@ Ruta:
 GET /api/customer-journey
 ```
 
-### 11.1 Consulta Cypher del timeline
+Consulta conceptual:
 
 ```cypher
 MATCH (u:User {id: $userId})-[:COMPRÓ]->(o:Order)-[:CONTIENE]->(p:Product)-[:PERTENECE_A]->(c:Category)
-RETURN o.id AS orderId, o.fecha AS fecha, o.total AS total, o.estado AS estado,
-       collect({id: p.id, nombre: p.nombre, imagen: p.imageUrl, categoria: c.nombre}) AS productos
+RETURN o.id AS orderId,
+       o.fecha AS fecha,
+       o.total AS total,
+       o.estado AS estado,
+       collect({
+         id: p.id,
+         nombre: p.nombre,
+         imagen: p.imageUrl,
+         categoria: c.nombre
+       }) AS productos
 ORDER BY fecha ASC;
 ```
 
-### 11.2 Logica implementada
+La respuesta se transforma en:
 
-El backend arma:
+- timeline de compras;
+- categorias nuevas descubiertas;
+- total de pedidos;
+- producto mas comprado;
+- progreso por categorias;
+- prediccion de proxima categoria.
 
-- Datos del usuario.
-- Timeline de pedidos.
-- Productos por pedido.
-- Categorias nuevas detectadas.
-- Total de pedidos.
-- Categorias compradas.
-- Producto mas comprado.
-- Prediccion de proxima categoria.
-- Nivel del usuario.
-
-Niveles:
+Niveles del usuario:
 
 ```text
 1 categoria  -> Iniciado
@@ -884,17 +836,14 @@ Niveles:
 5 categorias -> Maestro matero
 ```
 
-Frontend:
+Beneficio:
 
-- Pagina `/mi-recorrido`.
-- Header de perfil.
-- Timeline visual.
-- Barra de progreso.
-- Prediccion del siguiente paso.
+- transforma el historial de compras en una experiencia entendible para el cliente;
+- usa el grafo para mostrar evolucion y no solo una tabla de pedidos.
 
 ---
 
-## 12. Armador de kit matero
+## 21. Armador de kit matero
 
 Archivos:
 
@@ -910,13 +859,13 @@ Ruta:
 GET /api/kit-builder
 ```
 
-### 12.1 Categorias fijas del kit
+Categorias fijas:
 
 ```js
 ["Yerba", "Calabazas", "Bombillas", "Termos", "Yerberas"]
 ```
 
-### 12.2 Consulta Cypher del kit
+Consulta conceptual:
 
 ```cypher
 MATCH (u:User {id: $userId})-[:COMPRÓ]->(:Order)-[:CONTIENE]->(p:Product)-[:PERTENECE_A]->(c:Category)
@@ -935,17 +884,15 @@ RETURN categoriasCompradas,
 ORDER BY catFaltante, vecesComprado DESC;
 ```
 
-### 12.3 Logica implementada
+Logica:
 
-El backend:
+1. Detectar categorias compradas.
+2. Detectar categorias faltantes.
+3. Recomendar productos para completar el kit.
+4. Calcular progreso.
+5. Entregar cupon si el kit esta completo.
 
-1. Detecta categorias compradas por el usuario.
-2. Marca cada categoria como:
-   - `owned`
-   - `missing`
-3. Para categorias faltantes, recomienda un producto real de MongoDB.
-4. Calcula progreso.
-5. Si se completan las 5 categorias, devuelve cupon:
+Cupon:
 
 ```json
 {
@@ -955,179 +902,110 @@ El backend:
 }
 ```
 
-Tambien se corrigio un bug de clasificacion:
+Ubicacion final:
 
-- `Set Completo Matero Premium` antes caia como `Calabazas` por contener la palabra `mate`.
-- Ahora los productos de categoria `Sets` cuentan como `Yerberas` para completar el kit.
-
-### 12.4 Frontend
-
-Componente:
-
-- `frontend/components/mate-kit-builder.tsx`
-
-Ubicacion actual:
-
-- `/recomendaciones`
-
-La pagina `/kit-armador` se dejo como redireccion hacia `/recomendaciones` para evitar duplicar la misma experiencia en dos lugares.
-
-UI:
-
-- Grid de 5 cards.
-- Badge `Ya lo tenes` o `Te falta`.
-- Imagen del producto comprado o recomendado.
-- Boton `Agregar al carrito`.
-- Boton para agregar todos los faltantes.
-- Barra de progreso visual.
-- Mensaje de cupon cuando el kit esta completo.
+- El kit se muestra dentro de `/recomendaciones`.
+- `/kit-armador` redirecciona a `/recomendaciones` para no duplicar experiencia.
 
 ---
 
-## 13. Frontend analytics
+## 22. Mapas visuales basados en Neo4j
 
-Componentes creados:
+En `/recomendaciones` se reemplazo la vista tecnica del grafo por mapas visuales pensados para usuario final. No se usan D3 ni Cytoscape: son SVG dinamicos generados en React.
 
-- `frontend/components/top-viewed-products.tsx`
-- `frontend/components/top-sold-nodes.tsx`
+### Estilo compartido
 
-### 13.1 Mas vistos
+- Fondo externo: `#F5EDD8`.
+- Fondo interno: `#E8D9BE`.
+- Nodo central: gradiente `#D4793A -> #7A3010`.
+- Conectores: `#9A6030` con `stroke-dasharray`.
+- Stats: fondo `#EDE0CC`, borde `#C8A882`.
+- Animaciones:
+  - `pulse-ring`;
+  - `glow-center`;
+  - `float-node`.
 
-Componente: `TopViewedProducts`
+### Mapa de favoritos
 
-Muestra productos mas vistos desde:
+Representa:
 
-```http
-GET /api/products/analytics/top
+- productos repetidos por el usuario;
+- sugerencias cercanas para recompra.
+
+Elementos:
+
+- badge `repite`;
+- badge `sugiere`;
+- nodo central con nombre del usuario;
+- corazon clickeable en el header que se rellena visualmente.
+
+### Mapa de compras juntas
+
+Representa:
+
+- productos que el usuario compra juntos;
+- combos populares sugeridos.
+
+Elementos:
+
+- linea doble entre pares;
+- badge `juntos`;
+- badge `combo popular`;
+- tooltip con detalle y link al producto.
+
+### Mapa de beneficios
+
+Representa:
+
+- productos con descuento activo.
+
+Elementos:
+
+- badge `-X%`;
+- borde mas grueso para descuentos de 50% o mas;
+- tooltip con precio actual, precio original y ahorro.
+
+### Mapa de categorias
+
+Representa:
+
+- categorias exploradas;
+- categorias pendientes.
+
+Elementos:
+
+- nodos verdes para categorias compradas;
+- nodos beige punteados para categorias no exploradas;
+- tooltip con producto destacado;
+- boton `Ver categoría`;
+- cierre con `x`;
+- posicionamiento seguro del tooltip para que no tape la informacion.
+
+### Ajuste UX
+
+Se elimino de la interfaz el cartel:
+
+```text
+Modo respaldo
 ```
 
-Visual:
-
-- Cards de productos.
-- Imagen.
-- Nombre.
-- Categoria.
-- Cantidad de vistas.
-- Link al detalle.
-
-### 13.2 Mas vendidos
-
-Componente: `TopSoldNodes`
-
-Muestra productos mas vendidos desde:
-
-```http
-GET /api/products/analytics/top-sold
-```
-
-Visual:
-
-- Nodos circulares.
-- Nodo mas grande segun cantidad de ventas.
-- Link al producto cuando tiene `_id` real de MongoDB.
+La razon es que era util para debug, pero no para el usuario final. El fallback sigue existiendo internamente.
 
 ---
 
-## 14. Productos nuevos y stock
-
-Archivo:
-
-- `backend/src/seed.extra-products.js`
-
-Se agrego un seed extra que:
-
-1. Genera imagenes JPG en `frontend/public`.
-2. Actualiza stock de productos existentes.
-3. Inserta o actualiza 10 productos nuevos.
-
-Comando:
-
-```bash
-cd backend
-npm run seed:extras
-```
-
-### 14.1 Productos agregados
-
-1. Mate Camionero de Cuero Marron
-2. Mate Torpedo Premium Negro
-3. Bombilla Premium Pico Plano
-4. Bombilla Resorte Desmontable
-5. Yerba Mate Barbacua 1kg
-6. Yerba Mate Blend con Hierbas 500g
-7. Termo Pico Cebador Negro 1.2L
-8. Yerbera de Cuero con Pico Vertedor
-9. Set Matero Viajero Compacto
-10. Cepillo Limpiador de Bombilla
-
-Cada producto incluye:
-
-- Nombre.
-- Descripcion.
-- Precio.
-- Stock.
-- Categoria.
-- Imagen propia.
-
-### 14.2 Imagenes generadas
-
-Se generaron assets en:
-
-- `frontend/public/product-mate-camionero-cuero.jpg`
-- `frontend/public/product-mate-torpedo-negro.jpg`
-- `frontend/public/product-bombilla-pico-plano.jpg`
-- `frontend/public/product-bombilla-resorte.jpg`
-- `frontend/public/product-yerba-barbacua.jpg`
-- `frontend/public/product-yerba-hierbas.jpg`
-- `frontend/public/product-termo-negro-12.jpg`
-- `frontend/public/product-yerbera-cuero.jpg`
-- `frontend/public/product-set-viajero.jpg`
-- `frontend/public/product-cepillo-bombilla.jpg`
-
-Verificacion realizada:
-
-- Total de productos en MongoDB: `20`.
-- Productos sin stock: `0`.
-- Productos nuevos insertados: `10`.
+# Parte III - Aplicacion funcional en el ecommerce
 
 ---
 
-## 15. Cambios en navegacion frontend
-
-Archivo:
-
-- `frontend/components/header.tsx`
-
-Se agregaron accesos a:
-
-- `/recomendaciones`
-- `/mi-recorrido`
-
-Se removio el acceso directo a `/kit-armador` porque el kit quedo integrado dentro de `/recomendaciones`.
-
-Paginas nuevas:
-
-- `frontend/app/recomendaciones/page.tsx`
-- `frontend/app/mi-recorrido/page.tsx`
-- `frontend/app/kit-armador/page.tsx`
-
-Nota:
-
-- `/kit-armador` redirecciona a `/recomendaciones`.
-
----
-
-## 16. Descuentos administrables
+## 23. Descuentos administrables
 
 Se agrego soporte de descuentos por producto desde el panel administrador.
-
-### 16.1 Backend
 
 Modelo:
 
 - `backend/src/models/Product.js`
 
-Campo agregado:
+Campo:
 
 ```js
 discountPercentage: {
@@ -1140,79 +1018,212 @@ discountPercentage: {
 
 Validaciones:
 
-- `backend/src/middlewares/validateProductSchema.js`
-- `backend/src/utils/productValidators.js`
-- `backend/src/services/product.service.js`
+- `backend/src/middlewares/validateProductSchema.js`;
+- `backend/src/utils/productValidators.js`;
+- `backend/src/services/product.service.js`.
 
-Reglas:
+Aplicacion:
 
-- Descuento minimo: `0`.
-- Descuento maximo: `90`.
-- El backend rechaza valores fuera de rango.
-
-Pedidos:
-
-- `backend/src/services/order.service.js`
-
-Al crear un pedido se calcula el precio final con descuento para subtotal y total.
-
-### 16.2 Frontend
-
-Archivos principales:
-
-- `frontend/app/admin/page.tsx`
-- `frontend/components/product-card.tsx`
-- `frontend/app/productos/page.tsx`
-- `frontend/app/productos/[id]/page.tsx`
-- `frontend/lib/api.ts`
-
-Helpers agregados:
-
-```ts
-getProductDiscount(product)
-getProductFinalPrice(product)
-isProductDiscounted(product)
-```
-
-Panel admin:
-
-- Slider/input para descuento.
-- Preview de precio final.
-- Badge `OFF`.
-- Estadistica de productos con descuento.
-
-Donde se muestran descuentos:
-
-- Cards del catalogo.
-- Productos destacados.
-- Detalle de producto.
-- Recomendaciones.
-- Kit matero.
-- Productos mas vistos.
-- Productos mas vendidos.
-- Mapa de beneficios.
+- admin puede cargar descuentos;
+- el catalogo muestra precio final y precio original tachado;
+- el detalle de producto respeta descuentos;
+- el checkout calcula subtotales con descuento;
+- el mapa de beneficios usa esos datos.
 
 ---
 
-## 17. Guia de setup inicial
+## 24. Analytics visuales
 
-Archivo creado:
+Componentes:
+
+- `frontend/components/top-viewed-products.tsx`;
+- `frontend/components/top-sold-nodes.tsx`.
+
+### Mas vistos
+
+Endpoint:
+
+```http
+GET /api/products/analytics/top
+```
+
+Fuente:
+
+- Cassandra `product_views`.
+
+Visual:
+
+- cards de productos;
+- vistas acumuladas;
+- link al detalle.
+
+### Mas vendidos
+
+Endpoint:
+
+```http
+GET /api/products/analytics/top-sold
+```
+
+Fuente:
+
+- Cassandra `product_sales`.
+
+Visual:
+
+- nodos circulares;
+- mas ventas = nodo mas grande;
+- link al producto si tiene `_id` real de MongoDB.
+
+---
+
+## 25. Productos extra y stock
+
+Archivo:
+
+- `backend/src/seed.extra-products.js`
+
+Se agregaron 10 productos nuevos con:
+
+- nombre;
+- descripcion;
+- precio;
+- stock;
+- categoria;
+- imagen propia.
+
+Productos:
+
+1. Mate Camionero de Cuero Marron
+2. Mate Torpedo Premium Negro
+3. Bombilla Premium Pico Plano
+4. Bombilla Resorte Desmontable
+5. Yerba Mate Barbacua 1kg
+6. Yerba Mate Blend con Hierbas 500g
+7. Termo Pico Cebador Negro 1.2L
+8. Yerbera de Cuero con Pico Vertedor
+9. Set Matero Viajero Compacto
+10. Cepillo Limpiador de Bombilla
+
+Imagenes generadas en `frontend/public/`:
+
+- `product-mate-camionero-cuero.jpg`
+- `product-mate-torpedo-negro.jpg`
+- `product-bombilla-pico-plano.jpg`
+- `product-bombilla-resorte.jpg`
+- `product-yerba-barbacua.jpg`
+- `product-yerba-hierbas.jpg`
+- `product-termo-negro-12.jpg`
+- `product-yerbera-cuero.jpg`
+- `product-set-viajero.jpg`
+- `product-cepillo-bombilla.jpg`
+
+---
+
+## 26. Redis como cache complementario
+
+Redis se usa para cachear rankings y consultas frecuentes.
+
+Casos:
+
+- productos mas vistos;
+- productos mas vendidos;
+- cache de productos.
+
+Cuando se registra una venta, se invalidan caches relacionadas:
+
+```js
+const cacheKeys = await redisClient.keys("analytics:top-sold-products:*");
+if (cacheKeys.length) {
+  await redisClient.del(cacheKeys);
+}
+```
+
+Redis mejora performance pero no es fuente de verdad. Si Redis falla, la aplicacion sigue funcionando sin cache.
+
+---
+
+## 27. Archivos principales modificados o creados
+
+### Cassandra
+
+- `backend/src/config/cassandra.js`
+- `backend/src/config/cassandra.schema.cql`
+- `backend/src/seed.cassandra.js`
+- `backend/src/services/order.cassandra.service.js`
+- `backend/src/services/cart.service.js`
+- `backend/src/services/analytics.service.js`
+- `backend/src/services/sales.analytics.service.js`
+- `backend/src/controllers/cart.controller.js`
+- `backend/src/controllers/analytics.controller.js`
+
+### Neo4j
+
+- `backend/src/config/neo4j.js`
+- `backend/src/config/neo4j.seed.cypher`
+- `backend/src/services/recommendation.service.js`
+- `backend/src/services/customerJourney.service.js`
+- `backend/src/services/kitBuilder.service.js`
+- `backend/src/controllers/recommendation.controller.js`
+- `backend/src/controllers/customerJourney.controller.js`
+- `backend/src/controllers/kitBuilder.controller.js`
+- `backend/src/routes/recommendation.routes.js`
+- `backend/src/routes/customerJourney.routes.js`
+- `backend/src/routes/kitBuilder.routes.js`
+
+### Frontend
+
+- `frontend/app/recomendaciones/page.tsx`
+- `frontend/app/mi-recorrido/page.tsx`
+- `frontend/app/kit-armador/page.tsx`
+- `frontend/components/mate-kit-builder.tsx`
+- `frontend/components/top-viewed-products.tsx`
+- `frontend/components/top-sold-nodes.tsx`
+- `frontend/components/product-card.tsx`
+- `frontend/app/admin/page.tsx`
+- `frontend/lib/api.ts`
+
+### Documentacion
+
+- `IMPLEMENTACIONES_BDII.md`
+- `SETUP_INICIAL.md`
+
+---
+
+## 28. Rutas relevantes
+
+### Cassandra / analytics / carrito
+
+```http
+POST   /api/orders
+GET    /api/orders/mine
+GET    /api/orders
+PUT    /api/orders/:id/status
+GET    /api/orders/cart
+POST   /api/orders/cart
+DELETE /api/orders/cart
+POST   /api/products/:id/view
+GET    /api/products/analytics/top
+GET    /api/products/analytics/top-sold
+```
+
+### Neo4j / recomendaciones
+
+```http
+GET    /api/recommendations
+GET    /api/customer-journey
+GET    /api/kit-builder
+```
+
+---
+
+## 29. Como levantar las bases
+
+El setup completo esta documentado en:
 
 - `SETUP_INICIAL.md`
 
-Contenido:
-
-- Requisitos previos.
-- Instalacion de dependencias.
-- Configuracion de `.env`.
-- Docker para MongoDB, Redis, Cassandra y Neo4j.
-- Seeds del proyecto.
-- Comandos para levantar backend y frontend.
-- URLs principales.
-- Verificaciones rapidas.
-- Problemas frecuentes.
-
-Servicios Docker documentados:
+Comandos principales:
 
 ```bash
 docker run -d --name mate-mongo -p 27017:27017 mongo:7
@@ -1221,223 +1232,96 @@ docker run -d --name cassandra -p 9042:9042 cassandra:4.1
 docker run -d --name neo4j -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5
 ```
 
-Tambien se documentaron soluciones para:
-
-- Puerto `3001` ocupado.
-- Redis ya corriendo.
-- Cassandra con `ECONNREFUSED`.
-- Cassandra con `OperationTimedOutError`.
-- Neo4j con `ECONNREFUSED`.
-- `npm error code 130`.
-
----
-
-## 18. Rutas finales principales
-
-### Productos
-
-```http
-GET    /api/products
-GET    /api/products/:id
-POST   /api/products/:id/view
-GET    /api/products/analytics/top
-GET    /api/products/analytics/top-sold
-```
-
-### Pedidos
-
-```http
-POST   /api/orders
-GET    /api/orders/mine
-GET    /api/orders
-PUT    /api/orders/:id/status
-```
-
-### Carrito
-
-```http
-GET    /api/orders/cart
-POST   /api/orders/cart
-DELETE /api/orders/cart
-```
-
-### Recomendaciones
-
-```http
-GET    /api/recommendations
-```
-
-### Recorrido del cliente
-
-```http
-GET    /api/customer-journey
-```
-
-### Kit
-
-```http
-GET    /api/kit-builder
-```
-
----
-
-## 19. Consultas requeridas por el TP cubiertas
-
-### Cassandra
-
-Se cubrieron:
-
-- Mas de 2 tablas desnormalizadas.
-- Partition keys y clustering columns documentadas.
-- Mas de 8 consultas CQL.
-- TTL en carrito.
-- Coleccion en Cassandra: `list<frozen<map<text,text>>>`.
-- Counters: `product_views` y `product_sales`.
-- Batch: creacion de pedido en varias tablas.
-- Prepared statements en `execute()` y `batch()`.
-
-### Neo4j
-
-Se cubrieron:
-
-- Nodos conceptuales:
-  - `User`
-  - `Order`
-  - `Product`
-  - `Category`
-- Relaciones:
-  - `COMPRÓ`
-  - `CONTIENE`
-  - `PERTENECE_A`
-  - `COMPLEMENTA`
-  - `PURCHASED`
-  - `IN_CATEGORY`
-- Consultas con traversal:
-  - Recomendacion colaborativa.
-  - Productos por categoria.
-  - Beneficios/descuentos activos.
-  - Timeline de pedidos.
-  - Kit builder por categorias faltantes.
-  - Compras juntas y categorias exploradas representadas en mapas visuales.
-- Fallback robusto a MongoDB.
-
----
-
-## 20. Verificaciones realizadas
-
-Se ejecutaron validaciones durante el desarrollo:
+Verificar Cassandra:
 
 ```bash
-node --check backend/src/services/kitBuilder.service.js
-node --check backend/src/services/recommendation.service.js
-node --check backend/src/seed.extra-products.js
+docker logs cassandra --tail 30
 ```
 
-```bash
-cd frontend
-npm run build
-```
-
-Resultado:
-
-- Frontend compila correctamente.
-- TypeScript validado con `npx tsc --noEmit`.
-- `git diff --check` sin problemas.
-
-Nota:
-
-- El lint puntual con `npx eslint` no se pudo completar porque la sesion no tenia acceso a npm registry y `npx` intento resolver paquetes por red.
-
----
-
-## 21. Comandos utiles para levantar servicios
-
-### Backend
-
-```bash
-cd "/Users/franciscorodriguezpons/Documents/New project/mate-ecommerce-backend/backend"
-npm run dev
-```
-
-### Frontend
-
-```bash
-cd "/Users/franciscorodriguezpons/Documents/New project/mate-ecommerce-backend/frontend"
-npm run dev
-```
-
-Frontend:
+Esperar:
 
 ```text
-http://localhost:3001
-```
-
-Backend:
-
-```text
-http://localhost:3000
-```
-
-### Cassandra local
-
-```bash
-docker run -d --name cassandra -p 9042:9042 cassandra:4.1
-```
-
-Esperar hasta ver en logs:
-
-```txt
 Startup complete
 ```
 
-### Redis local
+Verificar Neo4j:
 
 ```bash
-docker run -d --name mate-redis -p 6379:6379 redis:8
+docker logs neo4j --tail 30
 ```
 
-Si se usa Redis local sin Docker:
-
-```bash
-redis-server
-```
-
-Si aparece `Address already in use`, Redis ya esta corriendo.
-
-### Neo4j local
-
-```bash
-docker run -d --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:5
-```
-
-Debe estar escuchando en:
+Esperar:
 
 ```text
-bolt://127.0.0.1:7687
+Started.
+```
+
+Seeds:
+
+```bash
+cd backend
+node src/seed.js
+npm run seed:extras
+npm run seed:cassandra
+cd ..
+docker exec -i neo4j cypher-shell -u neo4j -p password < backend/src/config/neo4j.seed.cypher
 ```
 
 ---
 
-## 22. Resultado final
+## 30. Cobertura de requisitos del TP
+
+### Cassandra
+
+| Requisito | Implementacion |
+| --- | --- |
+| Minimo 2 tablas desnormalizadas | `orders_by_user`, `orders_by_status`, `order_items`, `carts`, `product_views`, `product_sales` |
+| Partition key y clustering columns | Documentadas por tabla |
+| 8 consultas CQL | Superadas: pedidos, estados, items, carrito, vistas, ventas |
+| TTL | `carts` con `USING TTL 604800` |
+| Coleccion | `list<frozen<map<text, text>>>` |
+| Counter | `product_views`, `product_sales` |
+| Batch | Creacion de pedido en varias tablas |
+| Prepared statements | `prepare: true` en `execute()` y `batch()` |
+
+### Neo4j
+
+| Requisito | Implementacion |
+| --- | --- |
+| Nodos | `User`, `Order`, `Product`, `Category` |
+| Relaciones | `COMPRÓ`, `CONTIENE`, `PERTENECE_A`, `COMPLEMENTA`, `PURCHASED`, `IN_CATEGORY` |
+| Traversals | recomendaciones, kit, journey, categorias |
+| Relaciones con propiedades | `CONTIENE {cantidad}`, `PURCHASED {quantity}` |
+| Consultas complejas | colaborativas, categorias faltantes, compras juntas, beneficios |
+| Visualizacion | mapas SVG interactivos en `/recomendaciones` |
+
+---
+
+## 31. Resultado final
 
 El proyecto quedo con:
 
-- Ecommerce funcional sobre MongoDB.
-- Cassandra integrada para pedidos, carrito y analytics.
-- Redis usado como cache.
-- Neo4j integrado para recomendaciones, recorrido y kit, con fallback.
-- Descuentos administrables por producto.
+- MongoDB como fuente de verdad.
+- Cassandra para pedidos desnormalizados, carrito con TTL, counters y analytics.
+- Neo4j para recomendaciones, recorrido del usuario, kit matero y mapas relacionales.
+- Redis para cache.
+- Fallbacks para mantener la app disponible aunque Cassandra o Neo4j fallen.
+- Panel admin con descuentos.
 - Frontend enriquecido con:
-  - productos mas vistos
-  - productos mas vendidos
-  - recomendaciones
-  - mapas SVG interactivos para favoritos, compras juntas, beneficios y categorias
-  - recorrido del matero
-  - armador de kit
-  - cupon al completar kit
-- 10 productos nuevos con imagen, descripcion, stock y precio.
-- Stock actualizado para todos los productos.
-- Guia `SETUP_INICIAL.md` para levantar el proyecto completo desde cero.
+  - productos mas vistos;
+  - productos mas vendidos;
+  - recomendaciones;
+  - mapa de favoritos;
+  - mapa de compras juntas;
+  - mapa de beneficios;
+  - mapa de categorias;
+  - recorrido del matero;
+  - armador de kit;
+  - cupon al completar el kit.
+
+La implementacion no solo agrega tecnologias, sino que las aplica a problemas donde cada una aporta valor real:
+
+- Cassandra aporta velocidad, desnormalizacion y escritura eficiente.
+- Neo4j aporta expresividad relacional y recorridos complejos.
+- MongoDB conserva consistencia funcional como base principal.
+- Redis reduce costo de consultas frecuentes.

@@ -1,105 +1,176 @@
-# 🧉 Mate E-Commerce Fullstack
+# Mate E-Commerce Fullstack
 
-Proyecto universitario de una plataforma de comercio electrónico para la venta de mates, con frontend y backend integrados en un monorepo.
+E-commerce universitario de productos materos desarrollado como proyecto fullstack para Bases de Datos II - UTN FRC.
 
-El proyecto está compuesto por:
-- **Frontend**: aplicación React + Next.js
-- **Backend**: API REST con Node.js, Express, MongoDB y Redis
-- **Cache**: Redis para cache-aside de productos
+El sistema combina una aplicacion web con backend REST y varias bases de datos especializadas:
 
----
-
-## 🚀 Descripción general
-
-Este repositorio contiene una aplicación completa de e-commerce que permite:
-- gestionar productos
-- gestionar usuarios y autenticación JWT
-- crear y consultar pedidos
-- consumir una API desde un frontend moderno
-- usar caching con Redis para optimizar consultas de productos
-
-La arquitectura está separada en dos paquetes:
-- `frontend/` para la interfaz de usuario
-- `backend/` para la API y la lógica del servidor
+- **MongoDB** como fuente principal de verdad.
+- **Redis** como cache para optimizar consultas frecuentes.
+- **Cassandra** para pedidos desnormalizados, carrito persistido, counters y analytics.
+- **Neo4j** para recomendaciones, relaciones entre productos, recorrido del usuario y mapas visuales.
 
 ---
 
-## 🧱 Tecnologías principales
+## Descripcion General
+
+La aplicacion permite navegar productos de mate, administrar catalogo, comprar, consultar pedidos y explorar recomendaciones personalizadas.
+
+El objetivo tecnico del proyecto es mostrar como distintas bases NoSQL pueden convivir dentro de una misma arquitectura, usando cada una donde aporta mas valor:
+
+| Tecnologia | Uso principal en el proyecto |
+| --- | --- |
+| MongoDB | usuarios, productos, pedidos, stock, autenticacion y datos principales |
+| Redis | cache de productos y respuestas frecuentes |
+| Cassandra | pedidos por usuario/estado, carrito con TTL, productos vistos y vendidos |
+| Neo4j | recomendaciones, compras juntas, categorias exploradas, kit matero y mapas relacionales |
+| Next.js | frontend del cliente y panel de administrador |
+| Express | API REST del backend |
+
+---
+
+## Funcionalidades Principales
+
+### Cliente
+
+- catalogo de productos;
+- detalle de producto;
+- carrito;
+- pedidos del usuario;
+- productos mas vistos;
+- productos mas vendidos;
+- recomendaciones personalizadas;
+- armador de kit matero;
+- recorrido del matero;
+- mapas visuales de favoritos, compras juntas, beneficios y categorias.
+
+### Administrador
+
+- gestion de productos;
+- stock por producto;
+- carga de descuentos;
+- visualizacion de productos con precio original, precio final y porcentaje aplicado.
+
+### Bases de Datos II
+
+- Cassandra con tablas desnormalizadas;
+- TTL para carrito;
+- counters para analytics;
+- batch para escritura de pedidos;
+- Neo4j con nodos, relaciones y recorridos;
+- consultas Cypher para recomendaciones y patrones de compra;
+- visualizacion en frontend de datos derivados del grafo.
+
+---
+
+## Arquitectura
+
+```text
+Frontend Next.js
+       |
+       v
+Backend Express
+       |
+       |-- MongoDB: fuente de verdad
+       |-- Redis: cache
+       |-- Cassandra: analytics, pedidos y carrito
+       |-- Neo4j: recomendaciones y relaciones
+```
+
+El backend esta preparado para continuar funcionando aunque Cassandra o Neo4j no esten disponibles. En esos casos usa respuestas de respaldo basadas en MongoDB cuando corresponde.
+
+---
+
+## Estructura del Proyecto
+
+```text
+mate-ecommerce-backend/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # MongoDB, Redis, Cassandra y Neo4j
+│   │   ├── controllers/     # Controladores HTTP
+│   │   ├── middlewares/     # Auth, validaciones y errores
+│   │   ├── models/          # Modelos Mongoose
+│   │   ├── routes/          # Rutas Express
+│   │   ├── services/        # Logica de negocio e integraciones
+│   │   └── utils/           # Validadores y helpers
+│   ├── package.json
+│   └── .env.example
+├── frontend/
+│   ├── app/                 # Rutas Next.js
+│   ├── components/          # Componentes visuales
+│   ├── context/             # Contextos React
+│   ├── hooks/
+│   ├── lib/                 # Cliente API y helpers
+│   └── public/              # Imagenes de productos
+├── IMPLEMENTACIONES_BDII.md # Detalle declarativo Cassandra + Neo4j
+├── SETUP_INICIAL.md         # Guia paso a paso para levantar el proyecto
+├── package.json             # Monorepo npm workspaces
+└── README.md
+```
+
+---
+
+## Tecnologias
 
 ### Backend
+
 - Node.js
-- Express.js
+- Express 5
+- CommonJS
 - MongoDB
 - Mongoose
 - Redis
+- Cassandra Driver
+- Neo4j Driver
 - Joi
-- jsonwebtoken (JWT)
+- JWT
 - bcryptjs
 - Jest
 - Supertest
 - Nodemon
 
 ### Frontend
+
 - Next.js
 - React
 - TypeScript
 - Tailwind CSS
 - Radix UI
+- Lucide React
+- Recharts
 - React Hook Form
 - Zod
-- Recharts
-- Lucide React
 
-### Monorepo
-- npm workspaces
-- concurrently
+### Infraestructura Local
 
----
-
-## 📦 Requisitos
-
-Antes de ejecutar el proyecto, necesitas:
-- Node.js 18+ instalado
-- npm instalado
-- MongoDB disponible local o en Atlas
-- Redis instalado localmente
-- Git
-
-> No es necesario Docker para este proyecto. El desarrollo se hace con servicios locales.
+- Docker Desktop
+- MongoDB
+- Redis
+- Cassandra 4.1
+- Neo4j 5
 
 ---
 
-## 📁 Estructura del proyecto
+## Requisitos Previos
 
-```
-mate-ecommerce-backend/
-├── backend/            # API REST Node.js / Express
-│   ├── src/
-│   │   ├── config/       # Configuración de DB y Redis
-│   │   ├── controllers/  # Controladores de rutas
-│   │   ├── middlewares/  # Validaciones y manejo de errores
-│   │   ├── models/       # Esquemas de datos MongoDB
-│   │   ├── routes/       # Definición de endpoints
-│   │   ├── services/     # Lógica de negocio
-│   │   └── utils/        # Funciones auxiliares
-│   ├── package.json      # Dependencias backend
-│   └── .env.example      # Variables de entorno backend
-├── frontend/           # Aplicación Next.js
-│   ├── app/
-│   ├── components/
-│   ├── context/
-│   ├── hooks/
-│   ├── lib/
-│   ├── public/
-│   └── styles/
-├── package.json         # Configuración monorepo
-├── .gitignore           # Archivos ignorados
-└── README.md            # Documentación principal
+Para levantar el proyecto desde cero se necesita:
+
+- Node.js 20 o superior;
+- npm;
+- Docker Desktop;
+- Git.
+
+Verificar:
+
+```bash
+node -v
+npm -v
+docker --version
 ```
 
 ---
 
-## ⚙️ Instalación inicial
+## Instalacion
 
 ### 1. Clonar el repositorio
 
@@ -110,150 +181,381 @@ cd mate-ecommerce-backend
 
 ### 2. Instalar dependencias
 
+El proyecto usa `npm workspaces`, por lo tanto se instala desde la raiz:
+
 ```bash
 npm install
 ```
 
-Esto instalará las dependencias del monorepo y de los workspaces `backend` y `frontend`.
+Esto instala dependencias de:
 
-### 3. Configurar archivos de entorno
+- `backend/`
+- `frontend/`
 
-Copia el ejemplo de entorno del backend:
+### 3. Crear archivo de entorno
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Luego abre `backend/.env` y verifica los valores:
+Contenido esperado:
 
 ```env
+# MongoDB Configuration
 MONGO_URI=mongodb://127.0.0.1:27017/mate-ecommerce
+
+# Server Configuration
 PORT=3000
-JWT_SECRET=tu_clave_secreta_aqui
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_key_here
+
+# Redis Configuration
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
+
+# Cassandra Configuration
+CASSANDRA_HOST=127.0.0.1
+CASSANDRA_DATACENTER=datacenter1
+CASSANDRA_KEYSPACE=mate_ecommerce
+
+# Neo4j Configuration
+NEO4J_URI=bolt://127.0.0.1:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password
 ```
 
-> Si usas MongoDB Atlas, reemplaza `MONGO_URI` por tu conexión de Atlas.
+Opcionalmente, para el frontend:
+
+```bash
+cat > frontend/.env.local <<'EOF'
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+EOF
+```
 
 ---
 
-## 🚀 Ejecutar el proyecto
+## Levantar Bases de Datos con Docker
 
-### Pasos de arranque
-
-1. Iniciar Redis en una terminal:
+### MongoDB
 
 ```bash
-redis-server
+docker run -d --name mate-mongo -p 27017:27017 mongo:7
 ```
 
-2. Iniciar MongoDB local (si usas instalación local):
+Si el contenedor ya existe:
 
 ```bash
-brew services start mongodb-community
+docker start mate-mongo
 ```
 
-3. Iniciar frontend y backend juntos:
+### Redis
+
+```bash
+docker run -d --name mate-redis -p 6379:6379 redis:8
+```
+
+Si el contenedor ya existe:
+
+```bash
+docker start mate-redis
+```
+
+Verificar:
+
+```bash
+docker exec -it mate-redis redis-cli ping
+```
+
+Debe responder:
+
+```text
+PONG
+```
+
+### Cassandra
+
+```bash
+docker run -d --name cassandra -p 9042:9042 cassandra:4.1
+```
+
+Si el contenedor ya existe:
+
+```bash
+docker start cassandra
+```
+
+Cassandra puede tardar entre 30 y 90 segundos en iniciar. Verificar logs:
+
+```bash
+docker logs cassandra --tail 30
+```
+
+Esperar hasta ver:
+
+```text
+Startup complete
+```
+
+### Neo4j
+
+```bash
+docker run -d --name neo4j \
+  -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/password \
+  neo4j:5
+```
+
+Si el contenedor ya existe:
+
+```bash
+docker start neo4j
+```
+
+Verificar logs:
+
+```bash
+docker logs neo4j --tail 30
+```
+
+Esperar hasta ver:
+
+```text
+Started.
+```
+
+Neo4j Browser queda disponible en:
+
+```text
+http://localhost:7474
+```
+
+Credenciales locales:
+
+```text
+usuario: neo4j
+password: password
+```
+
+---
+
+## Seeds y Datos Iniciales
+
+### Cassandra
+
+Crea el keyspace, las tablas y datos de prueba para analytics:
+
+```bash
+npm run seed:cassandra --workspace=backend
+```
+
+Incluye:
+
+- pedidos por usuario;
+- pedidos por estado;
+- items de pedidos;
+- counters de productos vistos;
+- counters de productos vendidos.
+
+### Productos Extra
+
+Inserta productos adicionales con imagen, descripcion, stock y estilo consistente:
+
+```bash
+npm run seed:extras --workspace=backend
+```
+
+### Neo4j
+
+El proyecto incluye `backend/src/config/neo4j.seed.cypher` como referencia de seed para relaciones del grafo, especialmente `COMPLEMENTA`.
+
+Neo4j tambien se alimenta desde los flujos del backend para recomendaciones y mapas visuales.
+
+---
+
+## Ejecutar el Proyecto
+
+### Frontend y backend juntos
 
 ```bash
 npm run dev
 ```
 
-### Alternativa: iniciar servicios por separado
-
-- Backend:
+### Backend solo
 
 ```bash
 npm run dev --workspace=backend
 ```
 
-- Frontend:
+Backend:
+
+```text
+http://localhost:3000
+```
+
+### Frontend solo
 
 ```bash
 npm run dev --workspace=frontend
 ```
 
+Frontend:
+
+```text
+http://localhost:3001
+```
+
+Si el puerto `3001` esta ocupado, buscar el proceso:
+
+```bash
+lsof -i :3001
+```
+
+Y finalizarlo usando el PID real:
+
+```bash
+kill -9 <PID>
+```
+
 ---
 
-## 🌐 Puertos y URLs
+## URLs Principales
 
-| Servicio    | URL                            | Puerto |
-| ----------- | ------------------------------ | ------ |
-| Frontend    | http://localhost:3001          | 3001   |
-| Backend API | http://localhost:3000/api       | 3000   |
-| Redis       | localhost                      | 6379   |
-| MongoDB     | localhost                      | 27017  |
+| Vista | URL |
+| --- | --- |
+| Inicio | `http://localhost:3001/` |
+| Productos | `http://localhost:3001/productos` |
+| Recomendaciones | `http://localhost:3001/recomendaciones` |
+| Mis pedidos | `http://localhost:3001/mis-pedidos` |
+| Recorrido del matero | `http://localhost:3001/mi-recorrido` |
+| Admin | `http://localhost:3001/admin` |
+| API backend | `http://localhost:3000/api` |
+| Neo4j Browser | `http://localhost:7474` |
 
 ---
 
-## 🔧 Comandos útiles
+## Endpoints Destacados
 
-| Comando | Descripción |
+### Productos y Analytics
+
+```text
+GET  /api/products
+GET  /api/products/:id
+POST /api/products/:id/view
+GET  /api/products/analytics/top
+GET  /api/products/analytics/top-sold
+```
+
+### Pedidos y Carrito
+
+```text
+POST   /api/orders
+GET    /api/orders/my-orders
+GET    /api/orders/cart
+POST   /api/orders/cart
+DELETE /api/orders/cart
+```
+
+### Recomendaciones y Neo4j
+
+```text
+GET /api/recommendations
+GET /api/customer-journey
+GET /api/kit-builder
+```
+
+---
+
+## Comandos Utiles
+
+| Comando | Descripcion |
 | --- | --- |
 | `npm install` | Instala dependencias del monorepo |
-| `npm run dev` | Inicia frontend y backend en modo desarrollo |
-| `npm run build` | Construye el frontend para producción |
-| `npm start` | Inicia la app en modo producción |
-| `npm test` | Ejecuta tests del backend |
-| `npm run lint` | Ejecuta lint en el frontend |
+| `npm run dev` | Inicia frontend y backend juntos |
 | `npm run dev --workspace=backend` | Inicia solo el backend |
 | `npm run dev --workspace=frontend` | Inicia solo el frontend |
+| `npm run build` | Construye el frontend |
+| `npm start` | Inicia en modo produccion |
+| `npm test` | Ejecuta tests del backend |
+| `npm run lint` | Ejecuta lint del frontend |
+| `npm run seed:cassandra --workspace=backend` | Inicializa Cassandra |
+| `npm run seed:extras --workspace=backend` | Inserta productos extra |
 
 ---
 
-## ✅ Verificación rápida
+## Verificacion Rapida
+
+Backend:
 
 ```bash
-# Backend funcionando
 curl http://localhost:3000/
-# Debe responder: API funcionando
+```
 
-# Listar productos
+Productos:
+
+```bash
 curl http://localhost:3000/api/products
-
-# Verificar Redis
-redis-cli ping
-# Debe responder: PONG
 ```
 
----
-
-## 🛠️ Notas importantes
-
-- Redis debe iniciarse antes de ejecutar el backend si quieres usar la cache.
-- No necesitas Docker para este proyecto.
-- Si `npm run dev` falla por `concurrently`, ejecuta `npm install` en la raíz otra vez.
-- Si usas MongoDB Atlas, actualiza `backend/.env` con la URI correcta.
-
----
-
-## 🧪 Pruebas y desarrollo
-
-### Ejecutar tests del backend
+Redis:
 
 ```bash
-npm test
+docker exec -it mate-redis redis-cli ping
 ```
 
-### Lint del frontend
+Cassandra:
 
 ```bash
-npm run lint
+docker logs cassandra --tail 30
+```
+
+Neo4j:
+
+```bash
+docker logs neo4j --tail 30
+```
+
+Estado Git:
+
+```bash
+git status
 ```
 
 ---
 
-## 📌 Buenas prácticas
+## Documentacion del Proyecto
 
-- Mantén `backend/.env` fuera del repositorio.
-- Usa `backend/.env.example` como referencia.
-- Inicia Redis y MongoDB antes del backend.
-- Ejecuta `npm install` una sola vez después de clonar.
+Para una explicacion completa de la implementacion de Cassandra y Neo4j:
+
+- [`IMPLEMENTACIONES_BDII.md`](./IMPLEMENTACIONES_BDII.md)
+
+Para una guia paso a paso de instalacion desde cero:
+
+- [`SETUP_INICIAL.md`](./SETUP_INICIAL.md)
 
 ---
 
-## 📂 Archivos README eliminados
+## Notas de Desarrollo
 
-Los README secundarios (`README-REDIS.md`, `QUICK-START.md`, `SETUP-INITIAL.md`, `REDIS-STATUS.md`) han sido eliminados para centralizar toda la documentación en este archivo.
+- MongoDB sigue siendo la base principal del sistema.
+- Cassandra y Neo4j son complementarias y tienen fallback para no romper la aplicacion si no estan disponibles.
+- El backend usa CommonJS.
+- El frontend corre en el puerto `3001`.
+- El backend corre en el puerto `3000`.
+- Cassandra usa el puerto `9042`.
+- Neo4j usa `7474` para navegador y `7687` para Bolt.
+
+---
+
+## Estado Final
+
+El proyecto queda preparado para demostrar:
+
+- una arquitectura fullstack funcional;
+- integracion de multiples bases NoSQL;
+- uso real de Cassandra para consultas orientadas a rendimiento;
+- uso real de Neo4j para recorridos y recomendaciones;
+- frontend con visualizaciones de datos;
+- panel administrador con descuentos y stock;
+- documentacion tecnica para explicar la implementacion en una presentacion o defensa.
